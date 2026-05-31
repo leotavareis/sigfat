@@ -7,234 +7,119 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --bg: #f4f5f7;
-      --surface: #ffffff;
-      --surface2: #f0f2f5;
-      --border: #e2e5ea;
-      --border2: #cdd0d6;
-      --text: #1a1d23;
-      --text2: #5a6070;
-      --text3: #9399a6;
-      --primary: #185FA5;
-      --primary-light: #E6F1FB;
-      --radius: 10px;
-      --radius-sm: 6px;
-      --shadow: 0 1px 4px rgba(0,0,0,0.07);
+      --bg: #f4f5f7; --surface: #ffffff; --surface2: #f0f2f5;
+      --border: #e2e5ea; --border2: #cdd0d6;
+      --text: #1a1d23; --text2: #5a6070; --text3: #9399a6;
+      --primary: #185FA5; --primary-light: #E6F1FB;
+      --radius: 10px; --radius-sm: 6px; --shadow: 0 1px 4px rgba(0,0,0,0.07);
     }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-    }
-
-    header {
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      padding: 0 1.5rem;
-      height: 56px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      box-shadow: var(--shadow);
-    }
-
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 1.5rem; height: 56px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow); }
     .logo { font-size: 18px; font-weight: 700; color: var(--primary); letter-spacing: -0.5px; }
     .logo span { font-weight: 400; color: var(--text2); font-size: 14px; margin-left: 6px; }
-
     .main { max-width: 820px; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
-
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.25rem;
-      margin-bottom: 1.25rem;
-      box-shadow: var(--shadow);
-    }
-
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1.25rem; box-shadow: var(--shadow); }
     .step-header { display: flex; align-items: center; gap: 10px; margin-bottom: 1rem; }
-    .step-num {
-      width: 28px; height: 28px; border-radius: 50%;
-      background: var(--surface2); border: 1px solid var(--border2);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 12px; font-weight: 600; color: var(--text2); flex-shrink: 0;
-    }
+    .step-num { width: 28px; height: 28px; border-radius: 50%; background: var(--surface2); border: 1px solid var(--border2); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: var(--text2); flex-shrink: 0; }
     .step-num.active { background: var(--primary); border-color: var(--primary); color: #fff; }
     .step-title { font-size: 15px; font-weight: 600; color: var(--text); }
     .step-sub { font-size: 13px; color: var(--text2); margin-top: 2px; }
-
-    /* Nomes */
     .names-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .name-wrap { display: flex; flex-direction: column; gap: 4px; }
     .name-label { font-size: 12px; color: var(--text2); display: flex; align-items: center; gap: 5px; }
     .dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
-    input[type="text"] {
-      width: 100%; padding: 8px 10px; border: 1px solid var(--border2);
-      border-radius: var(--radius-sm); font-size: 14px; color: var(--text);
-      background: var(--surface); outline: none; transition: border-color 0.15s;
-    }
+    input[type="text"] { width: 100%; padding: 8px 10px; border: 1px solid var(--border2); border-radius: var(--radius-sm); font-size: 14px; color: var(--text); background: var(--surface); outline: none; transition: border-color 0.15s; }
     input[type="text"]:focus { border-color: var(--primary); }
-
-    /* Upload */
-    .upload-zone {
-      border: 2px dashed var(--border2); border-radius: var(--radius);
-      padding: 2rem; text-align: center; cursor: pointer;
-      transition: all 0.15s; position: relative;
-    }
+    .upload-zone { border: 2px dashed var(--border2); border-radius: var(--radius); padding: 2rem; text-align: center; cursor: pointer; transition: all 0.15s; position: relative; }
     .upload-zone:hover, .upload-zone.drag { background: var(--surface2); border-color: var(--primary); }
     .upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
     .upload-icon { font-size: 32px; color: var(--text3); margin-bottom: 8px; }
     .upload-hint { font-size: 14px; color: var(--text2); }
     .upload-hint strong { color: var(--primary); }
-
     .file-list { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
-    .file-item {
-      display: flex; align-items: center; gap: 10px; padding: 9px 12px;
-      background: var(--surface2); border-radius: var(--radius-sm); font-size: 13px;
-    }
+    .file-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--surface2); border-radius: var(--radius-sm); font-size: 13px; }
     .file-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .file-status { font-size: 12px; color: var(--text3); white-space: nowrap; }
-    .file-status.ok { color: #0F6E56; }
-    .file-status.err { color: #A32D2D; }
+    .file-status.ok { color: #0F6E56; } .file-status.err { color: #A32D2D; }
     .file-remove { cursor: pointer; color: var(--text3); margin-left: 4px; }
     .file-remove:hover { color: #A32D2D; }
-
-    /* Botões */
-    .btn {
-      display: inline-flex; align-items: center; gap: 7px;
-      padding: 9px 18px; border-radius: var(--radius-sm); border: none;
-      font-size: 14px; font-weight: 500; cursor: pointer; transition: opacity 0.15s;
-    }
+    .btn { display: inline-flex; align-items: center; gap: 7px; padding: 9px 18px; border-radius: var(--radius-sm); border: none; font-size: 14px; font-weight: 500; cursor: pointer; transition: opacity 0.15s; }
     .btn-primary { background: var(--primary); color: #fff; }
     .btn-primary:hover { opacity: 0.88; }
     .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
-    .btn-outline { background: transparent; color: var(--text2); border: 1px solid var(--border2); }
-    .btn-outline:hover { background: var(--surface2); }
-
-    /* Loading */
     .loading-bar { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; margin-top: 12px; }
     .loading-fill { height: 100%; background: var(--primary); border-radius: 2px; animation: loadanim 1.2s ease-in-out infinite; }
     @keyframes loadanim { 0%{width:0;margin-left:0} 50%{width:60%;margin-left:20%} 100%{width:0;margin-left:100%} }
     .load-msg { font-size: 13px; color: var(--text2); margin-top: 6px; }
-
-    /* Alert */
     .alert { font-size: 13px; padding: 10px 14px; border-radius: var(--radius-sm); margin-top: 10px; }
     .alert-info { background: #EAF3FF; color: #185FA5; }
     .alert-err { background: #FDEEEE; color: #A32D2D; }
     .alert-ok { background: #E6F5EF; color: #0F6E56; }
-
-    /* Tabs */
     .tab-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
-    .tab { padding: 5px 14px; border-radius: 20px; border: 1px solid var(--border2); background: var(--surface); font-size: 13px; color: var(--text2); cursor: pointer; transition: all 0.1s; }
+    .tab { padding: 5px 14px; border-radius: 20px; border: 1px solid var(--border2); background: var(--surface); font-size: 13px; color: var(--text2); cursor: pointer; }
     .tab.active { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 500; }
-
-    /* Transações */
     .tx-group { margin-bottom: 14px; }
-    .tx-group-title {
-      font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
-      color: var(--text3); padding-bottom: 6px; border-bottom: 1px solid var(--border); margin-bottom: 8px;
-    }
-    .tx-row {
-      background: var(--surface2); border-radius: var(--radius-sm);
-      padding: 10px 12px; margin-bottom: 6px;
-    }
+    .tx-group-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text3); padding-bottom: 6px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+    .tx-row { background: var(--surface2); border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 6px; }
     .tx-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
     .tx-desc { font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 65%; }
-    .tx-desc.auto { color: var(--text2); font-style: italic; }
     .tx-date { font-size: 12px; color: var(--text3); margin-top: 2px; }
     .tx-val { font-size: 14px; font-weight: 500; white-space: nowrap; }
     .tx-auto-badge { font-size: 10px; background: #E6F5EF; color: #0F6E56; padding: 2px 7px; border-radius: 10px; margin-top: 2px; display: inline-block; }
+    .banco-badge { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: var(--surface); border: 1px solid var(--border2); color: var(--text3); margin-left: 6px; }
     .assign-btns { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
-    .assign-btn {
-      font-size: 12px; padding: 4px 10px; border-radius: 20px;
-      border: 1px solid var(--border2); background: var(--surface);
-      color: var(--text2); cursor: pointer; transition: all 0.1s;
-    }
+    .assign-btn { font-size: 12px; padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border2); background: var(--surface); color: var(--text2); cursor: pointer; transition: all 0.1s; }
     .assign-btn:hover { background: var(--surface2); }
-
-    /* Resumo */
     .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .summary-card { background: var(--surface2); border-radius: var(--radius); padding: 1rem; }
     .summary-name { font-size: 12px; color: var(--text2); margin-bottom: 4px; display: flex; align-items: center; gap: 5px; }
     .summary-total { font-size: 24px; font-weight: 600; color: var(--text); }
     .summary-items { margin-top: 10px; display: flex; flex-direction: column; gap: 3px; }
-    .summary-line {
-      display: flex; justify-content: space-between; font-size: 12px;
-      color: var(--text2); padding: 3px 0; border-bottom: 1px solid var(--border);
-    }
+    .summary-line { display: flex; justify-content: space-between; font-size: 12px; color: var(--text2); padding: 3px 0; border-bottom: 1px solid var(--border); }
     .summary-line:last-child { border-bottom: none; }
     .summary-line .sl-desc { max-width: 68%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-    .badge-unassigned {
-      font-size: 11px; padding: 2px 8px;
-      background: #FFF3CD; color: #856404; border-radius: 10px; margin-left: 8px;
-    }
-
+    .badge-unassigned { font-size: 11px; padding: 2px 8px; background: #FFF3CD; color: #856404; border-radius: 10px; margin-left: 8px; }
     .divider { border: none; border-top: 1px solid var(--border); margin: 1.25rem 0; }
-
     .action-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
     .note { font-size: 12px; color: var(--text3); }
-
-    @media (max-width: 520px) {
-      .names-grid { grid-template-columns: 1fr; }
-      .summary-grid { grid-template-columns: 1fr; }
-    }
+    @media (max-width: 520px) { .names-grid { grid-template-columns: 1fr; } .summary-grid { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
-
 <header>
   <div class="logo">SigFat <span>Gestão de Faturas</span></div>
   <div id="sync-status" style="font-size:12px;color:var(--text3)"></div>
 </header>
-
 <div class="main">
 
   <!-- STEP 1: Pessoas -->
-  <div class="card" id="sec-pessoas">
+  <div class="card">
     <div class="step-header">
       <div class="step-num active">1</div>
-      <div>
-        <div class="step-title">Quem são as pessoas?</div>
-        <div class="step-sub">Nomes salvos automaticamente na nuvem</div>
-      </div>
+      <div><div class="step-title">Quem são as pessoas?</div><div class="step-sub">Nomes salvos automaticamente na nuvem</div></div>
     </div>
     <div class="names-grid" id="names-grid"></div>
     <div style="margin-top:12px">
-      <button class="btn btn-primary" id="btn-salvar-pessoas">
-        <i class="ti ti-device-floppy"></i> Salvar nomes
-      </button>
+      <button class="btn btn-primary" id="btn-salvar-pessoas"><i class="ti ti-device-floppy"></i> Salvar nomes</button>
       <span id="pessoas-msg" class="note" style="margin-left:10px"></span>
     </div>
   </div>
 
   <!-- STEP 2: Upload -->
-  <div class="card" id="sec-upload">
+  <div class="card">
     <div class="step-header">
       <div class="step-num active">2</div>
-      <div>
-        <div class="step-title">Envie as faturas</div>
-        <div class="step-sub">PDF ou imagem — o sistema já identifica compras conhecidas automaticamente</div>
-      </div>
+      <div><div class="step-title">Envie as faturas</div><div class="step-sub">PDF — leitura direta sem IA. Nubank, Amazon, Banco do Brasil e C6 Bank</div></div>
     </div>
     <div class="upload-zone" id="dropzone">
-      <input type="file" id="file-input" accept=".pdf,image/*" multiple />
+      <input type="file" id="file-input" accept=".pdf" multiple />
       <div class="upload-icon"><i class="ti ti-upload"></i></div>
-      <div class="upload-hint">Arraste os arquivos aqui ou <strong>clique para selecionar</strong></div>
+      <div class="upload-hint">Arraste os PDFs aqui ou <strong>clique para selecionar</strong></div>
     </div>
     <div class="file-list" id="file-list"></div>
     <div class="action-row">
-      <button class="btn btn-primary" id="btn-processar" disabled>
-        <i class="ti ti-sparkles"></i> Ler faturas com IA
-      </button>
-      <span class="note" id="process-note"></span>
+      <button class="btn btn-primary" id="btn-processar" disabled><i class="ti ti-scan"></i> Ler faturas</button>
     </div>
     <div id="loading-wrap" style="display:none">
       <div class="loading-bar"><div class="loading-fill"></div></div>
@@ -250,19 +135,14 @@
     <div class="step-header">
       <div class="step-num active">3</div>
       <div>
-        <div class="step-title">
-          Classifique os gastos
-          <span id="badge-unassigned" class="badge-unassigned" style="display:none"></span>
-        </div>
+        <div class="step-title">Classifique os gastos <span id="badge-unassigned" class="badge-unassigned" style="display:none"></span></div>
         <div class="step-sub">Compras já conhecidas foram classificadas automaticamente ✓</div>
       </div>
     </div>
     <div class="tab-bar" id="tab-bar"></div>
     <div id="tx-container"></div>
     <div class="action-row">
-      <button class="btn btn-primary" id="btn-resumo" disabled>
-        <i class="ti ti-chart-pie"></i> Ver resumo final
-      </button>
+      <button class="btn btn-primary" id="btn-resumo" disabled><i class="ti ti-chart-pie"></i> Ver resumo final</button>
     </div>
   </div>
 
@@ -272,10 +152,7 @@
   <div id="sec-resumo" style="display:none">
     <div class="step-header">
       <div class="step-num active">4</div>
-      <div>
-        <div class="step-title">Resumo — quem deve o quê</div>
-        <div class="step-sub">Classificações salvas para o próximo mês</div>
-      </div>
+      <div><div class="step-title">Resumo — quem deve o quê</div><div class="step-sub">Classificações salvas para o próximo mês</div></div>
     </div>
     <div class="summary-grid" id="summary-grid"></div>
   </div>
@@ -284,95 +161,57 @@
 
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+import * as pdfjsLib from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.mjs'
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.worker.mjs'
 
-// ─── CONFIG ───────────────────────────────────────────────────────────────────
-const SUPABASE_URL  = import.meta.env?.VITE_SUPABASE_URL  || window.__SUPABASE_URL__  || ''
-const SUPABASE_KEY  = import.meta.env?.VITE_SUPABASE_ANON_KEY || window.__SUPABASE_KEY__ || ''
-const ANTHROPIC_KEY = import.meta.env?.VITE_ANTHROPIC_API_KEY || window.__ANTHROPIC_KEY__ || ''
-
+const SUPABASE_URL = import.meta.env?.VITE_SUPABASE_URL || window.__SUPABASE_URL__ || ''
+const SUPABASE_KEY = import.meta.env?.VITE_SUPABASE_ANON_KEY || window.__SUPABASE_KEY__ || ''
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 
-// ─── CORES ────────────────────────────────────────────────────────────────────
-const CORES = ['#185FA5','#0F6E56','#854F0B','#993556','#3B6D11','#534AB7','#993B1D']
+const CORES    = ['#185FA5','#0F6E56','#854F0B','#993556','#3B6D11','#534AB7','#993B1D']
 const CORES_BG = ['#E6F1FB','#E1F5EE','#FAEEDA','#FBEAF0','#EAF3DE','#EEEDFE','#FAECE7']
-const NOMES_PADRAO = ['Eu','Pessoa 1','Pessoa 2','Pessoa 3','Pessoa 4','Pessoa 5','Pessoa 6']
+const NOMES_P  = ['Eu','Pessoa 1','Pessoa 2','Pessoa 3','Pessoa 4','Pessoa 5','Pessoa 6']
 
-// ─── ESTADO ───────────────────────────────────────────────────────────────────
-let pessoas = []          // [{id, nome, cor, posicao}]
-let classificacoes = {}   // {estabelecimento_lower: pessoa_id}
-let transacoes = []       // todas as transações da sessão
-let arquivos = []
-let abaAtiva = 'todas'
+let pessoas = [], classificacoes = {}, transacoes = [], arquivos = [], abaAtiva = 'todas'
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 async function init() {
   setSyncStatus('Conectando...')
-  await carregarPessoas()
-  await carregarClassificacoes()
-  renderNomes()
-  setSyncStatus('✓ Conectado')
+  await carregarPessoas(); await carregarClassificacoes()
+  renderNomes(); setSyncStatus('✓ Conectado')
   setTimeout(() => setSyncStatus(''), 2000)
 }
+function setSyncStatus(m) { document.getElementById('sync-status').textContent = m }
 
-function setSyncStatus(msg) {
-  document.getElementById('sync-status').textContent = msg
-}
-
-// ─── PESSOAS ──────────────────────────────────────────────────────────────────
 async function carregarPessoas() {
   const { data } = await supabase.from('pessoas').select('*').order('posicao')
-  if (data && data.length > 0) pessoas = data
-  else {
-    // fallback local
-    pessoas = NOMES_PADRAO.map((nome, i) => ({ id: null, nome, cor: CORES[i], posicao: i }))
-  }
+  pessoas = (data && data.length > 0) ? data : NOMES_P.map((n,i) => ({ id:null, nome:n, cor:CORES[i], posicao:i }))
 }
-
 async function carregarClassificacoes() {
-  const { data } = await supabase
-    .from('classificacoes')
-    .select('estabelecimento, pessoa_id')
-  if (data) {
-    classificacoes = {}
-    data.forEach(c => { classificacoes[c.estabelecimento.toLowerCase()] = c.pessoa_id })
-  }
+  const { data } = await supabase.from('classificacoes').select('estabelecimento, pessoa_id')
+  classificacoes = {}
+  if (data) data.forEach(c => { classificacoes[c.estabelecimento.toLowerCase()] = c.pessoa_id })
 }
 
 function renderNomes() {
-  const grid = document.getElementById('names-grid')
-  grid.innerHTML = pessoas.map((p, i) => `
+  document.getElementById('names-grid').innerHTML = pessoas.map((p,i) => `
     <div class="name-wrap">
-      <label class="name-label">
-        <span class="dot" style="background:${CORES[i]}"></span>
-        ${i === 0 ? 'Você' : 'Pessoa ' + i}
-      </label>
-      <input type="text" id="nome-${i}" value="${p.nome}" placeholder="${NOMES_PADRAO[i]}" />
-    </div>
-  `).join('')
+      <label class="name-label"><span class="dot" style="background:${CORES[i]}"></span>${i===0?'Você':'Pessoa '+i}</label>
+      <input type="text" id="nome-${i}" value="${p.nome}" placeholder="${NOMES_P[i]}" />
+    </div>`).join('')
 }
 
 document.getElementById('btn-salvar-pessoas').addEventListener('click', async () => {
-  const btn = document.getElementById('btn-salvar-pessoas')
-  btn.disabled = true
-  const msg = document.getElementById('pessoas-msg')
-  msg.textContent = 'Salvando...'
-
+  const btn = document.getElementById('btn-salvar-pessoas'); btn.disabled = true
+  const msg = document.getElementById('pessoas-msg'); msg.textContent = 'Salvando...'
   for (let i = 0; i < pessoas.length; i++) {
-    const nome = document.getElementById('nome-' + i)?.value.trim() || NOMES_PADRAO[i]
+    const nome = document.getElementById('nome-'+i)?.value.trim() || NOMES_P[i]
     pessoas[i].nome = nome
-
-    if (pessoas[i].id) {
-      await supabase.from('pessoas').update({ nome }).eq('id', pessoas[i].id)
-    } else {
-      const { data } = await supabase.from('pessoas').insert({ nome, cor: CORES[i], posicao: i }).select().single()
-      if (data) pessoas[i].id = data.id
-    }
+    if (pessoas[i].id) await supabase.from('pessoas').update({ nome }).eq('id', pessoas[i].id)
+    else { const { data } = await supabase.from('pessoas').insert({ nome, cor: CORES[i], posicao: i }).select().single(); if (data) pessoas[i].id = data.id }
   }
-
-  msg.textContent = '✓ Salvo!'
-  btn.disabled = false
-  renderAssignButtons()
-  renderResumo()
+  msg.textContent = '✓ Salvo!'; btn.disabled = false
+  renderAssignButtons(); renderResumo()
   setTimeout(() => msg.textContent = '', 2000)
 })
 
@@ -380,123 +219,167 @@ document.getElementById('btn-salvar-pessoas').addEventListener('click', async ()
 const fileInput = document.getElementById('file-input')
 const dropzone  = document.getElementById('dropzone')
 const btnProc   = document.getElementById('btn-processar')
-
 fileInput.addEventListener('change', e => addArquivos(Array.from(e.target.files)))
 dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag') })
 dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag'))
 dropzone.addEventListener('drop', e => { e.preventDefault(); dropzone.classList.remove('drag'); addArquivos(Array.from(e.dataTransfer.files)) })
 
 function addArquivos(novos) {
-  novos.forEach(f => {
-    if (!arquivos.find(x => x.file.name === f.name && x.file.size === f.size))
-      arquivos.push({ file: f, status: 'pendente', id: uid() })
-  })
-  renderFileList()
-  btnProc.disabled = arquivos.length === 0
+  novos.forEach(f => { if (!arquivos.find(x => x.file.name===f.name && x.file.size===f.size)) arquivos.push({ file:f, status:'pendente', id:uid() }) })
+  renderFileList(); btnProc.disabled = arquivos.length === 0
 }
-
 function renderFileList() {
-  document.getElementById('file-list').innerHTML = arquivos.map((a, i) => `
+  document.getElementById('file-list').innerHTML = arquivos.map((a,i) => `
     <div class="file-item">
-      <i class="ti ti-file" style="font-size:17px;color:var(--text3);flex-shrink:0"></i>
+      <i class="ti ti-file-type-pdf" style="font-size:17px;color:#A32D2D;flex-shrink:0"></i>
       <span class="file-name">${a.file.name}</span>
-      <span class="file-status ${a.status === 'ok' ? 'ok' : a.status === 'erro' ? 'err' : ''}">
-        ${a.status === 'ok' ? '✓ lido' : a.status === 'erro' ? '⚠ erro' : (a.file.size/1024).toFixed(0)+' KB'}
-      </span>
-      ${a.status === 'pendente' ? `<span class="file-remove" onclick="removerArquivo(${i})"><i class="ti ti-x"></i></span>` : ''}
-    </div>
-  `).join('')
+      <span class="file-status ${a.status==='ok'?'ok':a.status==='erro'?'err':''}">${a.status==='ok'?'✓ lido':a.status==='erro'?'⚠ erro':(a.file.size/1024).toFixed(0)+' KB'}</span>
+      ${a.status==='pendente'?`<span class="file-remove" onclick="removerArquivo(${i})"><i class="ti ti-x"></i></span>`:''}
+    </div>`).join('')
+}
+window.removerArquivo = (i) => { arquivos.splice(i,1); renderFileList(); btnProc.disabled = arquivos.length===0 }
+
+// ─── EXTRAÇÃO DE TEXTO DO PDF ─────────────────────────────────────────────────
+async function extrairTextoPDF(file) {
+  const arrayBuffer = await file.arrayBuffer()
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
+  let texto = ''
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const page = await pdf.getPage(p)
+    const content = await page.getTextContent()
+    texto += content.items.map(i => i.str).join(' ') + '\n'
+  }
+  return texto
 }
 
-window.removerArquivo = (i) => { arquivos.splice(i, 1); renderFileList(); btnProc.disabled = arquivos.length === 0 }
+// ─── PARSERS ──────────────────────────────────────────────────────────────────
+function detectarBanco(texto) {
+  if (/Nu Pagamentos|nubank/i.test(texto)) return 'nubank'
+  if (/AMAZON MASTERCARD|Bradescard|AMAZONMKTPLC/i.test(texto)) return 'amazon'
+  if (/BANCO DO BRASIL|SMILES|Ourocard/i.test(texto)) return 'bb'
+  if (/C6 BANK|C6Bank|C6 Carbon/i.test(texto)) return 'c6'
+  return 'generico'
+}
 
-// ─── PROCESSAR COM IA ─────────────────────────────────────────────────────────
+function parseValor(str) {
+  if (!str) return 0
+  return parseFloat(str.replace(/\./g,'').replace(',','.')) || 0
+}
+function limparDesc(d) {
+  return d.replace(/\s*-\s*Parcela\s+\d+\/\d+/gi,'').replace(/\(\d+\/\d+\)/g,'').replace(/\s+/g,' ').trim()
+}
+
+function parsearNubank(texto) {
+  const txs = []; const meses={JAN:1,FEV:2,MAR:3,ABR:4,MAI:5,JUN:6,JUL:7,AGO:8,SET:9,OUT:10,NOV:11,DEZ:12}
+  const secao = texto.match(/TRANSA[ÇC][OÕ]ES[\s\S]*/i)?.[0] || texto
+  const re = /(\d{2})\s+(JAN|FEV|MAR|ABR|MAI|JUN|JUL|AGO|SET|OUT|NOV|DEZ)\s+(.+?)\s+R\$\s*([\d\.]+,\d{2})/gi
+  let m
+  while ((m = re.exec(secao)) !== null) {
+    const desc = m[3].trim(); const valor = parseValor(m[4])
+    if (/Pagamento em|Saldo restante|pagamento recebido/i.test(desc) || valor<=0) continue
+    txs.push({ data:`${m[1]}/${String(meses[m[2].toUpperCase()]).padStart(2,'0')}`, descricao:limparDesc(desc), valor })
+  }
+  return txs
+}
+
+function parsearAmazon(texto) {
+  const txs = []
+  const secao = texto.match(/Lan[çc]amentos[\s\S]*/i)?.[0] || texto
+  const linhas = secao.split('\n')
+  for (const linha of linhas) {
+    const m = linha.match(/^(\d{2}\/\d{2})\s+(.+?)\s+([\d]+,\d{2})\s*$/)
+    if (!m) continue
+    const desc = m[2].trim(); const valor = parseValor(m[3])
+    if (/PAGAMENTO RECEBIDO|OBRIGADO/i.test(desc) || valor<=0) continue
+    txs.push({ data:m[1], descricao:limparDesc(desc), valor })
+  }
+  return txs
+}
+
+function parsearBB(texto) {
+  const txs = []
+  const secao = texto.match(/Lan[çc]amentos nesta fatura[\s\S]*/i)?.[0] || texto
+  const re = /(\d{2}\/\d{2})\s+(.+?)\s+BR\s+R\$\s*([\d\.]+,\d{2})/g
+  let m
+  while ((m = re.exec(secao)) !== null) {
+    const desc = m[2].trim(); const valor = parseValor(m[3])
+    if (/PAGAMENTO|PGTO|DESC AUTOMATICO|SALDO FATURA/i.test(desc) || valor<=0) continue
+    txs.push({ data:m[1], descricao:limparDesc(desc), valor })
+  }
+  return txs
+}
+
+function parsearC6(texto) {
+  const txs = []; const meses={jan:1,fev:2,mar:3,abr:4,mai:5,jun:6,jul:7,ago:8,set:9,out:10,nov:11,dez:12}
+  const re = /(\d{2})\s+(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)\s+(.+?)\s+([\d]+[.,]\d{2})\s*$/gmi
+  let m
+  while ((m = re.exec(texto)) !== null) {
+    const desc = m[3].trim(); const valor = parseValor(m[4])
+    if (/Inclusao de Pagamento|Estorno Tarifa|Anuidade.*Estorno/i.test(desc) || valor<=0) continue
+    txs.push({ data:`${m[1]}/${String(meses[m[2].toLowerCase()]).padStart(2,'0')}`, descricao:limparDesc(desc), valor })
+  }
+  return txs
+}
+
+function parsearGenerico(texto) {
+  const txs = []
+  const re = /(\d{2}[\/]\d{2})\s+(.{5,60}?)\s+([\d]+,\d{2})\s*$/gm
+  let m
+  while ((m = re.exec(texto)) !== null) {
+    const valor = parseValor(m[3])
+    if (valor<=0 || valor>50000) continue
+    txs.push({ data:m[1], descricao:limparDesc(m[2]), valor })
+  }
+  return txs
+}
+
+function parsearFatura(texto, nomeArquivo) {
+  const banco = detectarBanco(texto)
+  let txs = []
+  if (banco==='nubank') txs = parsearNubank(texto)
+  else if (banco==='amazon') txs = parsearAmazon(texto)
+  else if (banco==='bb') txs = parsearBB(texto)
+  else if (banco==='c6') txs = parsearC6(texto)
+  else txs = parsearGenerico(texto)
+  return txs.map(tx => ({ ...tx, banco, nomeArquivo:nomeArquivo.replace(/\.[^.]+$/,'') }))
+}
+
+// ─── PROCESSAR ────────────────────────────────────────────────────────────────
 document.getElementById('btn-processar').addEventListener('click', processar)
 
 async function processar() {
-  pessoas = pessoas.map((p, i) => ({ ...p, nome: document.getElementById('nome-' + i)?.value.trim() || p.nome }))
+  pessoas = pessoas.map((p,i) => ({ ...p, nome: document.getElementById('nome-'+i)?.value.trim() || p.nome }))
   btnProc.disabled = true
   document.getElementById('loading-wrap').style.display = 'block'
   document.getElementById('upload-alert').innerHTML = ''
   transacoes = []
 
-  const pendentes = arquivos.filter(a => a.status === 'pendente')
+  const pendentes = arquivos.filter(a => a.status==='pendente')
+  let autoCount = 0
 
   for (let i = 0; i < pendentes.length; i++) {
     const arq = pendentes[i]
     document.getElementById('load-msg').textContent = `Lendo "${arq.file.name}" (${i+1}/${pendentes.length})...`
-
     try {
-      // Registrar fatura no Supabase
-      const { data: faturaData } = await supabase.from('faturas')
-        .insert({ nome_arquivo: arq.file.name, mes_referencia: mesAtual() })
-        .select().single()
+      const texto = await extrairTextoPDF(arq.file)
+      const txsParsed = parsearFatura(texto, arq.file.name)
+
+      const { data: faturaData } = await supabase.from('faturas').insert({ nome_arquivo:arq.file.name, mes_referencia:mesAtual() }).select().single()
       const faturaId = faturaData?.id
 
-      const b64 = await toBase64(arq.file)
-      const isPdf = arq.file.type === 'application/pdf' || arq.file.name.endsWith('.pdf')
-      const mediaType = isPdf ? 'application/pdf' : (arq.file.type || 'image/jpeg')
-
-      const resp = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 4096,
-          messages: [{
-            role: 'user',
-            content: [
-              { type: isPdf ? 'document' : 'image', source: { type: 'base64', media_type: mediaType, data: b64 } },
-              { type: 'text', text: `Analise esta fatura de cartão de crédito e extraia TODAS as transações/compras.
-Retorne APENAS um JSON array, sem markdown, sem texto extra:
-[{"date":"DD/MM/YYYY","desc":"Nome do estabelecimento","amount":99.90}]
-Valores positivos em reais. Ignore juros, taxas e encargos.` }
-            ]
-          }]
-        })
-      })
-
-      const json = await resp.json()
-      const raw  = json.content?.find(c => c.type === 'text')?.text || '[]'
-      let txs = []
-      try { txs = JSON.parse(raw.replace(/```json|```/g,'').trim()) } catch { txs = [] }
-
-      // Classificar automaticamente com base na memória
-      for (const tx of txs) {
-        const chave = tx.desc?.toLowerCase().trim()
+      for (const tx of txsParsed) {
+        const chave = tx.descricao?.toLowerCase().trim()
         const pessoaIdMemoria = classificacoes[chave] || null
-        const autoClass = !!pessoaIdMemoria
-
-        const txObj = {
-          id: uid(),
-          fatura_id: faturaId,
-          fatura_nome: arq.file.name.replace(/\.[^.]+$/,''),
-          descricao: tx.desc,
-          data_compra: tx.date,
-          valor: Number(tx.amount),
-          pessoa_id: pessoaIdMemoria,
-          auto: autoClass
-        }
+        const auto = !!pessoaIdMemoria
+        if (auto) autoCount++
+        const txObj = { id:uid(), fatura_id:faturaId, fatura_nome:tx.nomeArquivo, descricao:tx.descricao, data_compra:tx.data, valor:tx.valor, pessoa_id:pessoaIdMemoria, auto, banco:tx.banco }
         transacoes.push(txObj)
-
-        // Salvar no Supabase
-        if (faturaId) {
-          await supabase.from('transacoes').insert({
-            fatura_id: faturaId,
-            descricao: tx.desc,
-            data_compra: tx.date,
-            valor: Number(tx.amount),
-            pessoa_id: pessoaIdMemoria,
-            classificado_automaticamente: autoClass
-          })
-        }
+        if (faturaId) await supabase.from('transacoes').insert({ fatura_id:faturaId, descricao:tx.descricao, data_compra:tx.data, valor:tx.valor, pessoa_id:pessoaIdMemoria, classificado_automaticamente:auto })
       }
-
       arq.status = 'ok'
     } catch(e) {
       arq.status = 'erro'
-      document.getElementById('upload-alert').innerHTML =
-        `<div class="alert alert-err"><i class="ti ti-alert-triangle"></i> Erro ao ler "${arq.file.name}".</div>`
+      document.getElementById('upload-alert').innerHTML = `<div class="alert alert-err">⚠ Erro ao ler "${arq.file.name}".</div>`
     }
     renderFileList()
   }
@@ -505,175 +388,109 @@ Valores positivos em reais. Ignore juros, taxas e encargos.` }
   btnProc.disabled = false
 
   if (transacoes.length > 0) {
-    const autoCount = transacoes.filter(t => t.auto).length
-    if (autoCount > 0) {
-      document.getElementById('upload-alert').innerHTML =
-        `<div class="alert alert-ok"><i class="ti ti-check"></i> ${autoCount} compra(s) classificadas automaticamente pela memória do sistema!</div>`
-    }
+    if (autoCount > 0) document.getElementById('upload-alert').innerHTML = `<div class="alert alert-ok">✓ ${transacoes.length} transações encontradas — ${autoCount} já classificadas automaticamente pela memória!</div>`
+    else document.getElementById('upload-alert').innerHTML = `<div class="alert alert-info">✓ ${transacoes.length} transações encontradas. Classifique cada uma abaixo.</div>`
     renderClassify()
     document.getElementById('div-class').style.display = 'block'
     document.getElementById('sec-classify').style.display = 'block'
-    document.getElementById('sec-classify').scrollIntoView({ behavior: 'smooth', block: 'start' })
+    document.getElementById('sec-classify').scrollIntoView({ behavior:'smooth', block:'start' })
   } else {
-    document.getElementById('upload-alert').innerHTML =
-      `<div class="alert alert-info"><i class="ti ti-info-circle"></i> Nenhuma transação encontrada.</div>`
+    document.getElementById('upload-alert').innerHTML = `<div class="alert alert-err">Nenhuma transação encontrada. Verifique se o PDF é de um banco suportado.</div>`
   }
 }
 
-// ─── CLASSIFICAR ─────────────────────────────────────────────────────────────
+// ─── CLASSIFICAR ──────────────────────────────────────────────────────────────
 function renderClassify() {
   const faturas = [...new Set(transacoes.map(t => t.fatura_nome))]
+  document.getElementById('tab-bar').innerHTML =
+    `<button class="tab ${abaAtiva==='todas'?'active':''}" onclick="trocarAba('todas')">Todas</button>` +
+    faturas.map(f => `<button class="tab ${abaAtiva===f?'active':''}" onclick="trocarAba('${f}')">${f}</button>`).join('')
 
-  const tabs = document.getElementById('tab-bar')
-  tabs.innerHTML = `
-    <button class="tab ${abaAtiva==='todas'?'active':''}" onclick="trocarAba('todas')">Todas</button>
-    ${faturas.map(f => `<button class="tab ${abaAtiva===f?'active':''}" onclick="trocarAba('${f}')">${f}</button>`).join('')}
-  `
-
-  const filtradas = abaAtiva === 'todas' ? transacoes : transacoes.filter(t => t.fatura_nome === abaAtiva)
+  const filtradas = abaAtiva==='todas' ? transacoes : transacoes.filter(t => t.fatura_nome===abaAtiva)
   const agrupadas = {}
-  filtradas.forEach(tx => {
-    if (!agrupadas[tx.fatura_nome]) agrupadas[tx.fatura_nome] = []
-    agrupadas[tx.fatura_nome].push(tx)
-  })
+  filtradas.forEach(tx => { if (!agrupadas[tx.fatura_nome]) agrupadas[tx.fatura_nome]=[]; agrupadas[tx.fatura_nome].push(tx) })
 
-  const container = document.getElementById('tx-container')
-  container.innerHTML = ''
-
+  const container = document.getElementById('tx-container'); container.innerHTML = ''
   Object.entries(agrupadas).forEach(([fatura, txs]) => {
-    const g = document.createElement('div')
-    g.className = 'tx-group'
-    if (abaAtiva === 'todas') g.innerHTML = `<div class="tx-group-title"><i class="ti ti-credit-card"></i> ${fatura}</div>`
-
+    const g = document.createElement('div'); g.className = 'tx-group'
+    if (abaAtiva==='todas') g.innerHTML = `<div class="tx-group-title"><i class="ti ti-credit-card"></i> ${fatura}</div>`
     txs.forEach(tx => {
-      const row = document.createElement('div')
-      row.className = 'tx-row'
-      row.id = 'row-' + tx.id
+      const row = document.createElement('div'); row.className = 'tx-row'; row.id = 'row-'+tx.id
       row.innerHTML = `
         <div class="tx-top">
           <div style="min-width:0">
-            <div class="tx-desc ${tx.auto?'auto':''}">${tx.descricao}</div>
-            <div class="tx-date">${tx.data_compra || ''} ${tx.auto ? '<span class="tx-auto-badge">✓ memória</span>' : ''}</div>
+            <div class="tx-desc">${tx.descricao} <span class="banco-badge">${tx.banco}</span></div>
+            <div class="tx-date">${tx.data_compra||''} ${tx.auto?'<span class="tx-auto-badge">✓ memória</span>':''}</div>
           </div>
           <div class="tx-val">R$ ${Number(tx.valor).toFixed(2)}</div>
         </div>
-        <div class="assign-btns" id="btns-${tx.id}"></div>
-      `
+        <div class="assign-btns" id="btns-${tx.id}"></div>`
       g.appendChild(row)
       renderBtns(tx)
     })
-
     container.appendChild(g)
   })
-
-  atualizarBadge()
-  atualizarBtnResumo()
+  atualizarBadge(); atualizarBtnResumo()
 }
 
 function renderBtns(tx) {
-  const wrap = document.getElementById('btns-' + tx.id)
-  if (!wrap) return
-  wrap.innerHTML = pessoas.map((p, i) => {
-    const sel = tx.pessoa_id === p.id
+  const wrap = document.getElementById('btns-'+tx.id); if (!wrap) return
+  wrap.innerHTML = pessoas.map((p,i) => {
+    const sel = tx.pessoa_id===p.id
     const style = sel ? `background:${CORES_BG[i]};border-color:${CORES[i]};color:${CORES[i]};font-weight:600;` : ''
     return `<button class="assign-btn" style="${style}" onclick="atribuir('${tx.id}','${p.id}')">${p.nome}</button>`
   }).join('')
 }
+function renderAssignButtons() { transacoes.forEach(tx => renderBtns(tx)) }
 
-function renderAssignButtons() {
-  transacoes.forEach(tx => renderBtns(tx))
-}
-
-window.trocarAba = (aba) => { abaAtiva = aba; renderClassify() }
-
+window.trocarAba = (a) => { abaAtiva=a; renderClassify() }
 window.atribuir = async (txId, pessoaId) => {
-  const tx = transacoes.find(t => t.id === txId)
-  if (!tx) return
-  tx.pessoa_id = pessoaId
-  tx.auto = false
-  renderBtns(tx)
-  atualizarBadge()
-  atualizarBtnResumo()
-  renderResumo()
-
-  // Salvar classificação na memória (Supabase)
+  const tx = transacoes.find(t => t.id===txId); if (!tx) return
+  tx.pessoa_id = pessoaId; tx.auto = false
+  renderBtns(tx); atualizarBadge(); atualizarBtnResumo(); renderResumo()
   const chave = tx.descricao?.toLowerCase().trim()
   classificacoes[chave] = pessoaId
-
-  await supabase.from('classificacoes').upsert(
-    { estabelecimento: chave, pessoa_id: pessoaId, atualizado_em: new Date().toISOString() },
-    { onConflict: 'estabelecimento' }
-  )
-
-  // Atualizar transação no Supabase
-  if (tx.fatura_id) {
-    await supabase.from('transacoes')
-      .update({ pessoa_id: pessoaId, classificado_automaticamente: false })
-      .eq('fatura_id', tx.fatura_id)
-      .eq('descricao', tx.descricao)
-  }
+  await supabase.from('classificacoes').upsert({ estabelecimento:chave, pessoa_id:pessoaId, atualizado_em:new Date().toISOString() }, { onConflict:'estabelecimento' })
+  if (tx.fatura_id) await supabase.from('transacoes').update({ pessoa_id:pessoaId, classificado_automaticamente:false }).eq('fatura_id',tx.fatura_id).eq('descricao',tx.descricao)
 }
 
 function atualizarBadge() {
   const n = transacoes.filter(t => !t.pessoa_id).length
-  const badge = document.getElementById('badge-unassigned')
-  badge.textContent = n > 0 ? `${n} sem classificar` : ''
-  badge.style.display = n > 0 ? '' : 'none'
+  const b = document.getElementById('badge-unassigned')
+  b.textContent = n>0 ? `${n} sem classificar` : ''; b.style.display = n>0?'':'none'
 }
-
 function atualizarBtnResumo() {
-  const ok = transacoes.length > 0 && transacoes.every(t => t.pessoa_id)
-  document.getElementById('btn-resumo').disabled = !ok
+  document.getElementById('btn-resumo').disabled = !(transacoes.length>0 && transacoes.every(t => t.pessoa_id))
 }
 
 // ─── RESUMO ───────────────────────────────────────────────────────────────────
 document.getElementById('btn-resumo').addEventListener('click', () => {
   renderResumo()
-  document.getElementById('div-resumo').style.display = 'block'
-  document.getElementById('sec-resumo').style.display = 'block'
-  document.getElementById('sec-resumo').scrollIntoView({ behavior: 'smooth', block: 'start' })
+  document.getElementById('div-resumo').style.display='block'
+  document.getElementById('sec-resumo').style.display='block'
+  document.getElementById('sec-resumo').scrollIntoView({ behavior:'smooth', block:'start' })
 })
-
 function renderResumo() {
-  const grid = document.getElementById('summary-grid')
-  if (!grid) return
-
-  grid.innerHTML = pessoas.map((p, i) => {
-    const txs = transacoes.filter(t => t.pessoa_id === p.id)
-    if (i > 0 && txs.length === 0) return ''
-    const total = txs.reduce((s, t) => s + Number(t.valor), 0)
-    return `
-      <div class="summary-card">
-        <div class="summary-name"><span class="dot" style="background:${CORES[i]}"></span>${p.nome}</div>
-        <div class="summary-total">R$ ${total.toFixed(2)}</div>
-        <div class="summary-items">
-          ${txs.slice(0,8).map(tx => `
-            <div class="summary-line">
-              <span class="sl-desc">${tx.descricao}</span>
-              <span>R$ ${Number(tx.valor).toFixed(2)}</span>
-            </div>
-          `).join('')}
-          ${txs.length > 8 ? `<div class="summary-line" style="color:var(--text3)">+ ${txs.length-8} mais</div>` : ''}
-          ${txs.length === 0 ? '<div style="font-size:12px;color:var(--text3)">Nenhuma compra</div>' : ''}
-        </div>
+  const grid = document.getElementById('summary-grid'); if (!grid) return
+  grid.innerHTML = pessoas.map((p,i) => {
+    const txs = transacoes.filter(t => t.pessoa_id===p.id)
+    if (i>0 && txs.length===0) return ''
+    const total = txs.reduce((s,t) => s+Number(t.valor), 0)
+    return `<div class="summary-card">
+      <div class="summary-name"><span class="dot" style="background:${CORES[i]}"></span>${p.nome}</div>
+      <div class="summary-total">R$ ${total.toFixed(2)}</div>
+      <div class="summary-items">
+        ${txs.slice(0,8).map(tx => `<div class="summary-line"><span class="sl-desc">${tx.descricao}</span><span>R$ ${Number(tx.valor).toFixed(2)}</span></div>`).join('')}
+        ${txs.length>8?`<div class="summary-line" style="color:var(--text3)">+ ${txs.length-8} mais</div>`:''}
+        ${txs.length===0?'<div style="font-size:12px;color:var(--text3)">Nenhuma compra</div>':''}
       </div>
-    `
+    </div>`
   }).join('')
 }
 
-// ─── UTILS ────────────────────────────────────────────────────────────────────
-function uid() { return Math.random().toString(36).slice(2) + Date.now().toString(36) }
-function mesAtual() { const d = new Date(); return `${d.getMonth()+1}/${d.getFullYear()}` }
-function toBase64(file) {
-  return new Promise((res, rej) => {
-    const r = new FileReader()
-    r.onload = () => res(r.result.split(',')[1])
-    r.onerror = rej
-    r.readAsDataURL(file)
-  })
-}
+function uid() { return Math.random().toString(36).slice(2)+Date.now().toString(36) }
+function mesAtual() { const d=new Date(); return `${d.getMonth()+1}/${d.getFullYear()}` }
 
-// ─── START ────────────────────────────────────────────────────────────────────
 init()
 </script>
 </body>
