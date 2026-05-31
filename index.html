@@ -652,9 +652,16 @@ function renderClassify() {
           </div>
           <div class="tx-val">R$ ${Number(tx.valor).toFixed(2)}</div>
         </div>
-        <div class="assign-btns" id="btns-${tx.id}"></div>`
+        <div class="assign-btns" id="btns-${tx.id}">
+          ${pessoas.map((p,i) => {
+            const pid = p.id || `local-${i}`
+            const sel = tx.pessoa_id === pid
+            const style = sel ? `background:${CORES_BG[i]};border-color:${CORES[i]};color:${CORES[i]};font-weight:600;` : ''
+            return `<button class="assign-btn" style="${style}" onclick="atribuir('${tx.id}','${pid}')">${p.nome}</button>`
+          }).join('')}
+        </div>`
       g.appendChild(row)
-      renderBtns(tx)
+      container.removeChild(g)
     })
     container.appendChild(g)
   })
