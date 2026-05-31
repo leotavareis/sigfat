@@ -628,6 +628,30 @@ async function processar() {
 }
 
 // ─── CLASSIFICAR ──────────────────────────────────────────────────────────────
+// Cada tx pode ter: pessoa_id (1 pessoa) OU divisao: [{pessoa_id, valor}] (dividido)
+
+function getPid(i) { return pessoas[i].id || `local-${i}` }
+
+function txClassificada(tx) {
+  return tx.pessoa_id || (tx.divisao && tx.divisao.length > 0)
+}
+
+function renderBtnsTx(tx) {
+  // Quais pessoas estão selecionadas nessa tx
+  const selecionadas = tx.divisao
+    ? tx.divisao.map(d => d.pessoa_id)
+    : tx.pessoa_id ? [tx.pessoa_id] : []
+
+  const nSel = selecionadas.length
+
+  return pessoas.map((p,i) => {
+    const pid = getPid(i)
+    const sel = selecionadas.includes(pid)
+    const style = sel ? `background:${CORES_BG[i]};border-color:${CORES[i]};color:${CORES[i]};font-weight:600;` : ''
+    return `<button class="assign-btn" style="${style}" onclick="togglePessoa('${tx.id}','${pid}')">${p.nome}</button>`
+  }).join('')
+}
+
 function renderClassify() {
   const faturas = [...new Set(transacoes.map(t => t.fatura_nome))]
   document.getElementById('tab-bar').innerHTML =
@@ -644,59 +668,95 @@ function renderClassify() {
     if (abaAtiva==='todas') g.innerHTML = `<div class="tx-group-title"><i class="ti ti-credit-card"></i> ${fatura}</div>`
     txs.forEach(tx => {
       const row = document.createElement('div'); row.className = 'tx-row'; row.id = 'row-'+tx.id
+
+      // Info de divisão
+      let divisaoInfo = ''
+      if (tx.divisao && tx.divisao.length > 1) {
+        const partes = tx.divisao.map(d => {
+          const p = pessoas.find(x => (x.id||`local-${pessoas.indexOf(x)}`) === d.pessoa_id)
+          return p ? `${p.nome}: R$ ${d.valor.toFixed(2)}` : ''
+        }).filter(Boolean).join(' · ')
+        divisaoInfo = `<div style="font-size:11px;color:var(--text3);margin-top:3px;">÷ ${partes}</div>`
+      }
+
       row.innerHTML = `
         <div class="tx-top">
-          <div style="min-width:0">
+          <div style="min-width:0;flex:1">
             <div class="tx-desc">${tx.descricao} <span class="banco-badge">${tx.banco}</span></div>
             <div class="tx-date">${tx.data_compra||''} ${tx.auto?'<span class="tx-auto-badge">✓ memória</span>':''}</div>
+            ${divisaoInfo}
           </div>
           <div class="tx-val">R$ ${Number(tx.valor).toFixed(2)}</div>
         </div>
-        <div class="assign-btns" id="btns-${tx.id}">
-          ${pessoas.map((p,i) => {
-            const pid = p.id || `local-${i}`
-            const sel = tx.pessoa_id === pid
-            const style = sel ? `background:${CORES_BG[i]};border-color:${CORES[i]};color:${CORES[i]};font-weight:600;` : ''
-            return `<button class="assign-btn" style="${style}" onclick="atribuir('${tx.id}','${pid}')">${p.nome}</button>`
-          }).join('')}
-        </div>`
+        <div style="font-size:11px;color:var(--text3);margin:4px 0 4px;">Toque para selecionar — pode escolher mais de uma para dividir igualmente</div>
+        <div class="assign-btns">${renderBtnsTx(tx)}</div>`
       g.appendChild(row)
-      container.removeChild(g)
     })
     container.appendChild(g)
   })
   atualizarBadge(); atualizarBtnResumo()
 }
 
-function renderBtns(tx) {
-  const wrap = document.getElementById('btns-'+tx.id); if (!wrap) return
-  wrap.innerHTML = pessoas.map((p,i) => {
-    const pid = p.id || `local-${i}`
-    const sel = tx.pessoa_id === pid || tx.pessoa_id === p.id
-    const style = sel ? `background:${CORES_BG[i]};border-color:${CORES[i]};color:${CORES[i]};font-weight:600;` : ''
-    return `<button class="assign-btn" style="${style}" onclick="atribuir('${tx.id}','${pid}')">${p.nome}</button>`
-  }).join('')
-}
-function renderAssignButtons() { transacoes.forEach(tx => renderBtns(tx)) }
+function renderAssignButtons() { transacoes.forEach(tx => {
+  const wrap = document.querySelector(`#row-${tx.id} .assign-btns`)
+  if (wrap) wrap.innerHTML = renderBtnsTx(tx)
+})}
 
 window.trocarAba = (a) => { abaAtiva=a; renderClassify() }
-window.atribuir = async (txId, pessoaId) => {
+
+window.togglePessoa = async (txId, pessoaId) => {
   const tx = transacoes.find(t => t.id===txId); if (!tx) return
-  tx.pessoa_id = pessoaId; tx.auto = false
-  renderBtns(tx); atualizarBadge(); atualizarBtnResumo(); renderResumo()
-  const chave = tx.descricao?.toLowerCase().trim()
-  classificacoes[chave] = pessoaId
-  await supabase.from('classificacoes').upsert({ estabelecimento:chave, pessoa_id:pessoaId, atualizado_em:new Date().toISOString() }, { onConflict:'estabelecimento' })
-  if (tx.fatura_id) await supabase.from('transacoes').update({ pessoa_id:pessoaId, classificado_automaticamente:false }).eq('fatura_id',tx.fatura_id).eq('descricao',tx.descricao)
+
+  // Pegar lista atual de selecionados
+  let selecionadas = tx.divisao
+    ? tx.divisao.map(d => d.pessoa_id)
+    : tx.pessoa_id ? [tx.pessoa_id] : []
+
+  // Toggle: adiciona ou remove
+  if (selecionadas.includes(pessoaId)) {
+    selecionadas = selecionadas.filter(id => id !== pessoaId)
+  } else {
+    selecionadas.push(pessoaId)
+  }
+
+  // Atualizar tx
+  if (selecionadas.length === 0) {
+    tx.pessoa_id = null
+    tx.divisao = null
+  } else if (selecionadas.length === 1) {
+    tx.pessoa_id = selecionadas[0]
+    tx.divisao = null
+  } else {
+    // Dividir igualmente
+    const valorPorPessoa = Number(tx.valor) / selecionadas.length
+    tx.divisao = selecionadas.map(pid => ({ pessoa_id: pid, valor: valorPorPessoa }))
+    tx.pessoa_id = selecionadas[0] // marca como classificada
+  }
+
+  tx.auto = false
+
+  // Atualizar botões e badges sem re-renderizar tudo
+  const wrap = document.querySelector(`#row-${tx.id} .assign-btns`)
+  if (wrap) wrap.innerHTML = renderBtnsTx(tx)
+  const infoEl = document.querySelector(`#row-${tx.id} .divisao-info`)
+
+  atualizarBadge(); atualizarBtnResumo(); renderResumo()
+
+  // Salvar memória se 1 pessoa
+  if (!tx.divisao) {
+    const chave = tx.descricao?.toLowerCase().trim()
+    classificacoes[chave] = tx.pessoa_id
+    await supabase.from('classificacoes').upsert({ estabelecimento:chave, pessoa_id:tx.pessoa_id, atualizado_em:new Date().toISOString() }, { onConflict:'estabelecimento' })
+  }
 }
 
 function atualizarBadge() {
-  const n = transacoes.filter(t => !t.pessoa_id).length
+  const n = transacoes.filter(t => !txClassificada(t)).length
   const b = document.getElementById('badge-unassigned')
   b.textContent = n>0 ? `${n} sem classificar` : ''; b.style.display = n>0?'':'none'
 }
 function atualizarBtnResumo() {
-  document.getElementById('btn-resumo').disabled = !(transacoes.length>0 && transacoes.every(t => t.pessoa_id))
+  document.getElementById('btn-resumo').disabled = !(transacoes.length>0 && transacoes.every(t => txClassificada(t)))
 }
 
 // ─── RESUMO ───────────────────────────────────────────────────────────────────
@@ -709,15 +769,35 @@ document.getElementById('btn-resumo').addEventListener('click', () => {
 function renderResumo() {
   const grid = document.getElementById('summary-grid'); if (!grid) return
   renderSelectManual()
+
+  // Calcular totais considerando divisão
+  function getTxsPessoa(pessoaId) {
+    const resultado = []
+    transacoes.forEach(tx => {
+      if (tx.divisao) {
+        const parte = tx.divisao.find(d => d.pessoa_id === pessoaId)
+        if (parte) resultado.push({ descricao: tx.descricao, valor: parte.valor, dividido: true, total: tx.divisao.length })
+      } else if (tx.pessoa_id === pessoaId) {
+        resultado.push({ descricao: tx.descricao, valor: Number(tx.valor), dividido: false })
+      }
+    })
+    return resultado
+  }
+
   grid.innerHTML = pessoas.map((p,i) => {
-    const txs = transacoes.filter(t => t.pessoa_id===p.id)
+    const pid = p.id || `local-${i}`
+    const txs = getTxsPessoa(pid)
     if (i>0 && txs.length===0) return ''
-    const total = txs.reduce((s,t) => s+Number(t.valor), 0)
+    const total = txs.reduce((s,t) => s + t.valor, 0)
     return `<div class="summary-card">
       <div class="summary-name"><span class="dot" style="background:${CORES[i]}"></span>${p.nome}</div>
       <div class="summary-total">R$ ${total.toFixed(2)}</div>
       <div class="summary-items">
-        ${txs.slice(0,8).map(tx => `<div class="summary-line"><span class="sl-desc">${tx.descricao}</span><span>R$ ${Number(tx.valor).toFixed(2)}</span></div>`).join('')}
+        ${txs.slice(0,8).map(tx => `
+          <div class="summary-line">
+            <span class="sl-desc">${tx.descricao}${tx.dividido?` <span style="font-size:10px;opacity:0.6">(÷${tx.total})</span>`:''}</span>
+            <span>R$ ${tx.valor.toFixed(2)}</span>
+          </div>`).join('')}
         ${txs.length>8?`<div class="summary-line" style="color:var(--text3)">+ ${txs.length-8} mais</div>`:''}
         ${txs.length===0?'<div style="font-size:12px;color:var(--text3)">Nenhuma compra</div>':''}
       </div>
@@ -725,7 +805,7 @@ function renderResumo() {
   }).join('')
 
   // Gerar mensagem WhatsApp
-  const temPessoas = pessoas.slice(1).some(p => transacoes.some(t => t.pessoa_id===p.id))
+  const temPessoas = pessoas.slice(1).some((p,i) => getTxsPessoa(p.id||`local-${i+1}`).length > 0)
   const box = document.getElementById('whatsapp-box')
   const pre = document.getElementById('whatsapp-text')
   if (box && pre) {
@@ -898,11 +978,22 @@ function gerarMensagemWhatsApp() {
 
   pessoas.forEach((p, i) => {
     if (i === 0) return
-    const txs = transacoes.filter(t => t.pessoa_id === p.id)
-    if (txs.length === 0) return
-    const total = txs.reduce((s,t) => s + Number(t.valor), 0)
+    const pid = p.id || `local-${i}`
+    const txsPessoa = []
+    transacoes.forEach(tx => {
+      if (tx.divisao) {
+        const parte = tx.divisao.find(d => d.pessoa_id === pid)
+        if (parte) txsPessoa.push({ descricao: tx.descricao, valor: parte.valor, dividido: true, ntotal: tx.divisao.length })
+      } else if (tx.pessoa_id === pid) {
+        txsPessoa.push({ descricao: tx.descricao, valor: Number(tx.valor), dividido: false })
+      }
+    })
+    if (txsPessoa.length === 0) return
+    const total = txsPessoa.reduce((s,t) => s + t.valor, 0)
     msg += `*${p.nome}* — R$ ${total.toFixed(2)}\n`
-    txs.forEach(tx => { msg += `  • ${tx.descricao}: R$ ${Number(tx.valor).toFixed(2)}\n` })
+    txsPessoa.forEach(tx => {
+      msg += `  • ${tx.descricao}${tx.dividido?` (÷${tx.ntotal})`:\"\"}: R$ ${tx.valor.toFixed(2)}\n`
+    })
     if (pix) {
       const url = gerarLinkPix(pix, total, `Fechamento ${mes}`)
       msg += `  💳 Pagar: ${url}\n`
@@ -913,7 +1004,6 @@ function gerarMensagemWhatsApp() {
 
   if (pix) msg += `🔑 *Chave Pix:* ${pix}`
 
-  // Renderizar botões de link Pix
   const cont = document.getElementById('pix-links-nova')
   if (cont) {
     cont.innerHTML = links.map(l =>
@@ -922,7 +1012,6 @@ function gerarMensagemWhatsApp() {
       </a>`
     ).join('')
   }
-
   return msg
 }
 
