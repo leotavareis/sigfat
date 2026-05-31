@@ -389,7 +389,13 @@ function parseValor(str) {
   return parseFloat(str.replace(/\./g,'').replace(',','.')) || 0
 }
 function limparDesc(d) {
-  return d.replace(/\s*-\s*Parcela\s+\d+\/\d+/gi,'').replace(/\(\d+\/\d+\)/g,'').replace(/\s+/g,' ').trim()
+  return d.replace(/\s*-\s*Parcela\s+\d+\/\d+/gi,'').replace(/\(parc\s+\d+\/\d+\)/gi,'').replace(/\(\d+\/\d+\)/g,'').replace(/\s+/g,' ').trim()
+}
+
+function extrairParcela(d) {
+  const m = d.match(/Parcela\s+(\d+)\/(\d+)/i) || d.match(/\(parc\s+(\d+)\/(\d+)\)/i) || d.match(/\((\d+)\/(\d+)\)/)
+  if (m) return { atual: parseInt(m[1]), total: parseInt(m[2]) }
+  return null
 }
 
 function parsearNubank(texto) {
@@ -413,13 +419,15 @@ function parsearNubank(texto) {
     if (valor <= 0 || valor > 10000) continue
 
     // Limpar descrição — remover "Total a pagar: R$..." que fica junto
-    const descLimpa = desc.replace(/Total a pagar.*$/i, '').replace(/\s*-\s*Parcela\s+\d+\/\d+/gi,'').trim()
+    const descLimpa = desc.replace(/Total a pagar.*$/i, '').trim()
     if (descLimpa.length < 3) continue
+    const parcela = extrairParcela(descLimpa)
 
     txs.push({
       data: `${m[1]}/${String(meses[m[2].toUpperCase()]).padStart(2,'0')}`,
       descricao: limparDesc(descLimpa),
-      valor
+      valor,
+      parcela
     })
   }
   return txs
@@ -434,7 +442,8 @@ function parsearAmazon(texto) {
     if (!m) continue
     const desc = m[2].trim(); const valor = parseValor(m[3])
     if (/PAGAMENTO RECEBIDO|OBRIGADO/i.test(desc) || valor<=0) continue
-    txs.push({ data:m[1], descricao:limparDesc(desc), valor })
+    const parcela = extrairParcela(desc)
+    txs.push({ data:m[1], descricao:limparDesc(desc), valor, parcela })
   }
   return txs
 }
@@ -447,7 +456,8 @@ function parsearBB(texto) {
   while ((m = re.exec(secao)) !== null) {
     const desc = m[2].trim(); const valor = parseValor(m[3])
     if (/PAGAMENTO|PGTO|DESC AUTOMATICO|SALDO FATURA/i.test(desc) || valor<=0) continue
-    txs.push({ data:m[1], descricao:limparDesc(desc), valor })
+    const parcela = extrairParcela(desc)
+    txs.push({ data:m[1], descricao:limparDesc(desc), valor, parcela })
   }
   return txs
 }
@@ -459,7 +469,8 @@ function parsearC6(texto) {
   while ((m = re.exec(texto)) !== null) {
     const desc = m[3].trim(); const valor = parseValor(m[4])
     if (/Inclusao de Pagamento|Estorno Tarifa|Anuidade.*Estorno/i.test(desc) || valor<=0) continue
-    txs.push({ data:`${m[1]}/${String(meses[m[2].toLowerCase()]).padStart(2,'0')}`, descricao:limparDesc(desc), valor })
+    const parcela = extrairParcela(desc)
+    txs.push({ data:`${m[1]}/${String(meses[m[2].toLowerCase()]).padStart(2,'0')}`, descricao:limparDesc(desc), valor, parcela })
   }
   return txs
 }
@@ -683,7 +694,11 @@ function renderClassify() {
         <div class="tx-top">
           <div style="min-width:0;flex:1">
             <div class="tx-desc">${tx.descricao} <span class="banco-badge">${tx.banco}</span></div>
-            <div class="tx-date">${tx.data_compra||''} ${tx.auto?'<span class="tx-auto-badge">✓ memória</span>':''}</div>
+            <div class="tx-date">
+              ${tx.data_compra||''}
+              ${tx.parcela ? `<span style="background:#FFF3CD;color:#856404;font-size:10px;padding:1px 6px;border-radius:8px;margin-left:4px;">Parcela ${tx.parcela.atual}/${tx.parcela.total}</span>` : ''}
+              ${tx.auto?'<span class="tx-auto-badge">✓ memória</span>':''}
+            </div>
             ${divisaoInfo}
           </div>
           <div class="tx-val">R$ ${Number(tx.valor).toFixed(2)}</div>
@@ -787,9 +802,9 @@ function renderResumo() {
     transacoes.forEach(tx => {
       if (tx.divisao) {
         const parte = tx.divisao.find(d => d.pessoa_id === pessoaId)
-        if (parte) resultado.push({ descricao: tx.nota || tx.descricao, valor: parte.valor, dividido: true, total: tx.divisao.length })
+        if (parte) resultado.push({ descricao: tx.nota || tx.descricao, valor: parte.valor, dividido: true, total: tx.divisao.length, parcela: tx.parcela })
       } else if (tx.pessoa_id === pessoaId) {
-        resultado.push({ descricao: tx.nota || tx.descricao, valor: Number(tx.valor), dividido: false })
+        resultado.push({ descricao: tx.nota || tx.descricao, valor: Number(tx.valor), dividido: false, parcela: tx.parcela })
       }
     })
     return resultado
@@ -806,7 +821,7 @@ function renderResumo() {
       <div class="summary-items">
         ${txs.slice(0,8).map(tx => `
           <div class="summary-line">
-            <span class="sl-desc">${tx.descricao}${tx.dividido?` <span style="font-size:10px;opacity:0.6">(÷${tx.total})</span>`:''}</span>
+            <span class="sl-desc">${tx.descricao}${tx.parcela?` <span style="font-size:10px;opacity:0.6">(${tx.parcela.atual}/${tx.parcela.total})</span>`:''}${tx.dividido?` <span style="font-size:10px;opacity:0.6">(÷${tx.total})</span>`:''}</span>
             <span>R$ ${tx.valor.toFixed(2)}</span>
           </div>`).join('')}
         ${txs.length>8?`<div class="summary-line" style="color:var(--text3)">+ ${txs.length-8} mais</div>`:''}
