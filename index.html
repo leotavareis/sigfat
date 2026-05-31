@@ -376,12 +376,14 @@ async function carregarTransacoesSalvas() {
     document.getElementById('sec-classify').style.display = 'block'
     atualizarBadge()
     atualizarBtnResumo()
-    // Mostrar resumo se já houver classificações
+    // Mostrar resumo sempre que houver classificações
     const classCount = transacoes.filter(t => txClassificada(t)).length
     if (classCount > 0) {
       renderResumo()
       document.getElementById('div-resumo').style.display = 'block'
       document.getElementById('sec-resumo').style.display = 'block'
+      // Carregar chave pix no campo
+      await carregarChavePix()
     }
   }
 }
