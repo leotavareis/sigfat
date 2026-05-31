@@ -199,6 +199,7 @@
     <div id="tx-container"></div>
     <div class="action-row">
       <button class="btn btn-primary" id="btn-resumo" disabled><i class="ti ti-chart-pie"></i> Ver resumo final</button>
+      <button class="btn" id="btn-resumo-parcial" style="display:none;border:1px solid var(--border2);color:var(--text2);background:var(--surface)" onclick="verResumoParcial()"><i class="ti ti-eye"></i> Ver resumo parcial</button>
     </div>
   </div>
 
@@ -782,7 +783,18 @@ function atualizarBadge() {
   b.textContent = n>0 ? `${n} sem classificar` : ''; b.style.display = n>0?'':'none'
 }
 function atualizarBtnResumo() {
-  document.getElementById('btn-resumo').disabled = !(transacoes.length>0 && transacoes.every(t => txClassificada(t)))
+  const total = transacoes.length
+  const classificadas = transacoes.filter(t => txClassificada(t)).length
+  document.getElementById('btn-resumo').disabled = !(total > 0 && classificadas === total)
+  const btnParcial = document.getElementById('btn-resumo-parcial')
+  if (btnParcial) btnParcial.style.display = (classificadas > 0 && classificadas < total) ? 'inline-flex' : 'none'
+}
+
+window.verResumoParcial = () => {
+  renderResumo()
+  document.getElementById('div-resumo').style.display = 'block'
+  document.getElementById('sec-resumo').style.display = 'block'
+  document.getElementById('sec-resumo').scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
 // ─── RESUMO ───────────────────────────────────────────────────────────────────
