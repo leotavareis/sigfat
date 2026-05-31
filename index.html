@@ -297,7 +297,7 @@ const CORES    = ['#185FA5','#0F6E56','#854F0B','#993556','#3B6D11','#534AB7','#
 const CORES_BG = ['#E6F1FB','#E1F5EE','#FAEEDA','#FBEAF0','#EAF3DE','#EEEDFE','#FAECE7']
 const NOMES_P  = ['Eu','Pessoa 1','Pessoa 2','Pessoa 3','Pessoa 4','Pessoa 5','Pessoa 6']
 
-let pessoas = [], classificacoes = {}, anotacoes_mem = {}, transacoes = [], arquivos = [], abaAtiva = 'todas'
+let pessoas = [], classificacoes = {}, anotacoes_mem = {}, transacoes = [], arquivos = [], abaAtiva = 'todas', mesAtualRef = ''
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 async function init() {
@@ -338,8 +338,9 @@ async function carregarTransacoesSalvas() {
   if (!faturas || faturas.length === 0) return
 
   // Pegar o mês mais recente
-  const mesAtualRef = faturas[0].mes_referencia
-  const faturasMes = faturas.filter(f => f.mes_referencia === mesAtualRef)
+  mesAtualRef = faturas[0].mes_referencia  // atualiza variável global
+  const mesAtualRefLocal = faturas[0].mes_referencia
+  const faturasMes = faturas.filter(f => f.mes_referencia === mesAtualRefLocal)
   const faturaIds = faturasMes.map(f => f.id)
 
   // Buscar transações desse mês
@@ -598,6 +599,7 @@ window.importarJSON = async (event) => {
     await garantirPessoasSalvas()
 
     const mesRef = data.mes_referencia || mesAtual()
+    mesAtualRef = mesRef  // atualiza variável global
 
     // Deletar faturas antigas do mesmo mês para evitar duplicatas
     const { data: faturasMes } = await supabase
@@ -1208,7 +1210,7 @@ window.copiarMensagem = async () => {
     setTimeout(() => btn.innerHTML = orig, 2000)
   })
   // Salvar resumo WhatsApp no histórico mensal automaticamente
-  const mes = faturas.length > 0 ? faturas[0].mes_referencia : mesAtual()
+  const mes = mesAtualRef || mesAtual()
   try {
     const { data: existente } = await supabase
       .from('historico_mensal')
@@ -1239,7 +1241,7 @@ window.salvarHistorico = async () => {
     setTimeout(() => { btn.innerHTML = orig; btn.style.background = '#185FA5'; btn.disabled = false }, 2500)
   }
 
-  const mes = faturas.length > 0 ? faturas[0].mes_referencia : mesAtual()
+  const mes = mesAtualRef || mesAtual()
   const txt = document.getElementById('whatsapp-text')?.textContent || ''
 
   // Montar detalhes por pessoa usando a mesma lógica do renderResumo
