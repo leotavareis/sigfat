@@ -1233,16 +1233,23 @@ window.salvarHistorico = async () => {
   btn.innerHTML = '<i class="ti ti-loader"></i> Salvando...'
   btn.disabled = true
 
+  const finalizar = (ok) => {
+    btn.innerHTML = ok ? '<i class="ti ti-check"></i> Salvo!' : '<i class="ti ti-x"></i> Erro'
+    btn.style.background = ok ? '#1a7a3a' : '#c0392b'
+    setTimeout(() => { btn.innerHTML = orig; btn.style.background = '#185FA5'; btn.disabled = false }, 2500)
+  }
+
   const mes = faturas.length > 0 ? faturas[0].mes_referencia : mesAtual()
   const txt = document.getElementById('whatsapp-text')?.textContent || ''
 
-  // Montar detalhes por pessoa
+  // Montar detalhes por pessoa usando a mesma lógica do renderResumo
   function getTxsPessoa(pessoaId) {
     const resultado = []
     transacoes.forEach(tx => {
-      if (tx.divisao) {
-        const parte = tx.divisao.find(d => d.pessoa_id === pessoaId)
-        if (parte) resultado.push({ descricao: tx.nota || tx.descricao, valor: parte.valor, parcela: tx.parcela ? `${tx.parcela.atual}/${tx.parcela.total}` : null, dividido: true })
+      const div = Array.isArray(tx.divisao) ? tx.divisao : null
+      if (div) {
+        const parte = div.find(d => d.pessoa_id === pessoaId)
+        if (parte) resultado.push({ descricao: tx.nota || tx.descricao, valor: Number(parte.valor), parcela: tx.parcela ? `${tx.parcela.atual}/${tx.parcela.total}` : null, dividido: true })
       } else if (tx.pessoa_id === pessoaId) {
         resultado.push({ descricao: tx.nota || tx.descricao, valor: Number(tx.valor), parcela: tx.parcela ? `${tx.parcela.atual}/${tx.parcela.total}` : null, dividido: false })
       }
@@ -1250,14 +1257,29 @@ window.salvarHistorico = async () => {
     return resultado
   }
 
-  try {
-    // Salvar resumo WhatsApp (registro único por mês)
-    const { data: existWpp } = await supabase.from('historico_mensal').select('id').eq('mes_referencia', mes).eq('pessoa', '_whatsapp_resumo').maybeSingle()
-    if (existWpp) {
-      await supabase.from('historico_mensal').update({ resumo_whatsapp: txt, criado_em: new Date().toISOString() }).eq('id', existWpp.id)
+  // Upsert genérico — busca por mes+pessoa e atualiza ou insere
+  async function upsertHistorico(mes, pessoa, payload) {
+    const { data: rows, error } = await supabase
+      .from('historico_mensal')
+      .select('id')
+      .eq('mes_referencia', mes)
+      .eq('pessoa', pessoa)
+    if (error) throw error
+    if (rows && rows.length > 0) {
+      const { error: e2 } = await supabase.from('historico_mensal')
+        .update({ ...payload, criado_em: new Date().toISOString() })
+        .eq('id', rows[0].id)
+      if (e2) throw e2
     } else {
-      await supabase.from('historico_mensal').insert({ mes_referencia: mes, pessoa: '_whatsapp_resumo', total: 0, resumo_whatsapp: txt })
+      const { error: e3 } = await supabase.from('historico_mensal')
+        .insert({ mes_referencia: mes, pessoa, ...payload })
+      if (e3) throw e3
     }
+  }
+
+  try {
+    // Salvar resumo WhatsApp
+    await upsertHistorico(mes, '_whatsapp_resumo', { total: 0, resumo_whatsapp: txt })
 
     // Salvar totais por pessoa
     for (let i = 0; i < pessoas.length; i++) {
@@ -1266,22 +1288,13 @@ window.salvarHistorico = async () => {
       const txs = getTxsPessoa(pid)
       if (txs.length === 0) continue
       const total = txs.reduce((s,t) => s + t.valor, 0)
-      const { data: existP } = await supabase.from('historico_mensal').select('id').eq('mes_referencia', mes).eq('pessoa', p.nome).maybeSingle()
-      if (existP) {
-        await supabase.from('historico_mensal').update({ total, detalhes: txs, criado_em: new Date().toISOString() }).eq('id', existP.id)
-      } else {
-        await supabase.from('historico_mensal').insert({ mes_referencia: mes, pessoa: p.nome, total, detalhes: txs })
-      }
+      await upsertHistorico(mes, p.nome, { total, detalhes: txs, resumo_whatsapp: null })
     }
 
-    btn.innerHTML = '<i class="ti ti-check"></i> Salvo!'
-    btn.style.background = '#1a7a3a'
-    setTimeout(() => { btn.innerHTML = orig; btn.style.background = '#185FA5'; btn.disabled = false }, 2500)
+    finalizar(true)
   } catch(e) {
     console.error('Erro ao salvar histórico:', e)
-    btn.innerHTML = '<i class="ti ti-x"></i> Erro'
-    btn.style.background = '#c0392b'
-    setTimeout(() => { btn.innerHTML = orig; btn.style.background = '#185FA5'; btn.disabled = false }, 2500)
+    finalizar(false)
   }
 }
 
