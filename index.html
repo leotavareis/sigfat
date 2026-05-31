@@ -375,14 +375,34 @@ function limparDesc(d) {
 }
 
 function parsearNubank(texto) {
-  const txs = []; const meses={JAN:1,FEV:2,MAR:3,ABR:4,MAI:5,JUN:6,JUL:7,AGO:8,SET:9,OUT:10,NOV:11,DEZ:12}
-  const secao = texto.match(/TRANSA[ÇC][OÕ]ES[\s\S]*/i)?.[0] || texto
-  const re = /(\d{2})\s+(JAN|FEV|MAR|ABR|MAI|JUN|JUL|AGO|SET|OUT|NOV|DEZ)\s+(.+?)\s+R\$\s*([\d\.]+,\d{2})/gi
+  const txs = []
+  const meses = {JAN:1,FEV:2,MAR:3,ABR:4,MAI:5,JUN:6,JUL:7,AGO:8,SET:9,OUT:10,NOV:11,DEZ:12}
+
+  // Pegar apenas a seção de transações (após "TRANSAÇÕES DE")
+  const secaoMatch = texto.match(/TRANSA[ÇC][OÕ]ES\s+DE\s+[\s\S]*/i)
+  const secao = secaoMatch ? secaoMatch[0] : texto
+
+  // Regex: DD MMM DESCRIÇÃO R$ VALOR
+  // O valor correto é sempre o ÚLTIMO R$ da linha/bloco (valor da parcela, não o total)
+  const re = /(\d{2})\s+(JAN|FEV|MAR|ABR|MAI|JUN|JUL|AGO|SET|OUT|NOV|DEZ)\s+(.+?)\s+R\$\s*([\d\.]+,\d{2})(?!\d)/gi
   let m
   while ((m = re.exec(secao)) !== null) {
-    const desc = m[3].trim(); const valor = parseValor(m[4])
-    if (/Pagamento em|Saldo restante|pagamento recebido/i.test(desc) || valor<=0) continue
-    txs.push({ data:`${m[1]}/${String(meses[m[2].toUpperCase()]).padStart(2,'0')}`, descricao:limparDesc(desc), valor })
+    const desc = m[3].trim()
+    const valor = parseValor(m[4])
+
+    // Ignorar linhas de cabeçalho, pagamentos, saldo, IOF, juros
+    if (/EMISS[AÃ]O|ENVIO|FATURA|LEANDRO TAVARES DOS REIS\s+To|Pagamento em|Saldo restante|pagamento recebido|Total a pagar|IOF|juros/i.test(desc)) continue
+    if (valor <= 0 || valor > 10000) continue
+
+    // Limpar descrição — remover "Total a pagar: R$..." que fica junto
+    const descLimpa = desc.replace(/Total a pagar.*$/i, '').replace(/\s*-\s*Parcela\s+\d+\/\d+/gi,'').trim()
+    if (descLimpa.length < 3) continue
+
+    txs.push({
+      data: `${m[1]}/${String(meses[m[2].toUpperCase()]).padStart(2,'0')}`,
+      descricao: limparDesc(descLimpa),
+      valor
+    })
   }
   return txs
 }
