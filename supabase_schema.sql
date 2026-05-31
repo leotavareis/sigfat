@@ -78,3 +78,7 @@ INSERT INTO config (chave, valor) VALUES ('pix_key', '84999152238') ON CONFLICT 
 
 -- Adicionar coluna nota nas transações (rodar no SQL Editor do Supabase)
 ALTER TABLE transacoes ADD COLUMN IF NOT EXISTS nota TEXT;
+
+-- Adicionar colunas divisao e parcela nas transações
+ALTER TABLE transacoes ADD COLUMN IF NOT EXISTS divisao JSONB;
+ALTER TABLE transacoes ADD COLUMN IF NOT EXISTS parcela JSONB;

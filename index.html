@@ -299,9 +299,11 @@ let pessoas = [], classificacoes = {}, transacoes = [], arquivos = [], abaAtiva 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 async function init() {
   setSyncStatus('Conectando...')
-  await carregarPessoas(); await carregarClassificacoes()
+  await carregarPessoas()
+  await carregarClassificacoes()
   renderNomes()
   await carregarChavePix()
+  await carregarTransacoesSalvas()
   setSyncStatus('✓ Conectado')
   setTimeout(() => setSyncStatus(''), 2000)
 }
@@ -315,6 +317,67 @@ async function carregarClassificacoes() {
   const { data } = await supabase.from('classificacoes').select('estabelecimento, pessoa_id')
   classificacoes = {}
   if (data) data.forEach(c => { classificacoes[c.estabelecimento.toLowerCase()] = c.pessoa_id })
+}
+
+async function carregarTransacoesSalvas() {
+  // Buscar a fatura mais recente
+  const { data: faturas } = await supabase
+    .from('faturas')
+    .select('id, nome_arquivo, mes_referencia')
+    .order('processado_em', { ascending: false })
+
+  if (!faturas || faturas.length === 0) return
+
+  // Pegar o mês mais recente
+  const mesAtualRef = faturas[0].mes_referencia
+  const faturasMes = faturas.filter(f => f.mes_referencia === mesAtualRef)
+  const faturaIds = faturasMes.map(f => f.id)
+
+  // Buscar transações desse mês
+  const { data: txsDB } = await supabase
+    .from('transacoes')
+    .select('*')
+    .in('fatura_id', faturaIds)
+    .order('data_compra')
+
+  if (!txsDB || txsDB.length === 0) return
+
+  // Montar objeto de transações
+  transacoes = txsDB.map(tx => {
+    const fatura = faturasMes.find(f => f.id === tx.fatura_id)
+    return {
+      id: tx.id,
+      fatura_id: tx.fatura_id,
+      fatura_nome: fatura?.nome_arquivo || 'Desconhecido',
+      descricao: tx.descricao,
+      data_compra: tx.data_compra,
+      valor: tx.valor,
+      pessoa_id: tx.pessoa_id,
+      nota: tx.nota || null,
+      parcela: tx.parcela || null,
+      auto: tx.classificado_automaticamente,
+      banco: (fatura?.nome_arquivo || '').toLowerCase().replace(/\s.*/,''),
+      divisao: tx.divisao || null
+    }
+  })
+
+  if (transacoes.length > 0) {
+    const naoClass = transacoes.filter(t => !txClassificada(t)).length
+    setSyncStatus(`✓ ${transacoes.length} transações carregadas (${naoClass} pendentes)`)
+    setTimeout(() => setSyncStatus(''), 4000)
+    renderClassify()
+    document.getElementById('div-class').style.display = 'block'
+    document.getElementById('sec-classify').style.display = 'block'
+    atualizarBadge()
+    atualizarBtnResumo()
+    // Mostrar resumo se já houver classificações
+    const classCount = transacoes.filter(t => txClassificada(t)).length
+    if (classCount > 0) {
+      renderResumo()
+      document.getElementById('div-resumo').style.display = 'block'
+      document.getElementById('sec-resumo').style.display = 'block'
+    }
+  }
 }
 
 function renderNomes() {
@@ -784,8 +847,16 @@ window.togglePessoa = async (txId, pessoaId) => {
 
   atualizarBadge(); atualizarBtnResumo(); renderResumo()
 
+  // Salvar no Supabase
+  const updateData = {
+    pessoa_id: tx.pessoa_id,
+    divisao: tx.divisao || null,
+    classificado_automaticamente: false
+  }
+  await supabase.from('transacoes').update(updateData).eq('id', tx.id)
+
   // Salvar memória se 1 pessoa
-  if (!tx.divisao) {
+  if (!tx.divisao && tx.pessoa_id) {
     const chave = tx.descricao?.toLowerCase().trim()
     classificacoes[chave] = tx.pessoa_id
     await supabase.from('classificacoes').upsert({ estabelecimento:chave, pessoa_id:tx.pessoa_id, atualizado_em:new Date().toISOString() }, { onConflict:'estabelecimento' })
