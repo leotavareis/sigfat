@@ -403,30 +403,37 @@ function parsearNubank(texto) {
   const txs = []
   const meses = {JAN:1,FEV:2,MAR:3,ABR:4,MAI:5,JUN:6,JUL:7,AGO:8,SET:9,OUT:10,NOV:11,DEZ:12}
 
-  // Pegar apenas a seção de transações (após "TRANSAÇÕES DE")
   const secaoMatch = texto.match(/TRANSA[ÇC][OÕ]ES\s+DE\s+[\s\S]*/i)
   const secao = secaoMatch ? secaoMatch[0] : texto
 
-  // Regex: DD MMM DESCRIÇÃO R$ VALOR
-  // O valor correto é sempre o ÚLTIMO R$ da linha/bloco (valor da parcela, não o total)
-  const re = /(\d{2})\s+(JAN|FEV|MAR|ABR|MAI|JUN|JUL|AGO|SET|OUT|NOV|DEZ)\s+(.+?)\s+R\$\s*([\d\.]+,\d{2})(?!\d)/gi
+  // Regex ampliada: captura DD MMM e tudo até o valor final (incluindo "- Parcela X/Y")
+  const re = /(\d{2})\s+(JAN|FEV|MAR|ABR|MAI|JUN|JUL|AGO|SET|OUT|NOV|DEZ)\s+([\s\S]+?)\s+R\$\s*([\d\.]+,\d{2})(?!\d)/gi
   let m
   while ((m = re.exec(secao)) !== null) {
-    const desc = m[3].trim()
+    const desc = m[3].replace(/\s+/g,' ').trim()
     const valor = parseValor(m[4])
 
-    // Ignorar linhas de cabeçalho, pagamentos, saldo, IOF, juros
-    if (/EMISS[AÃ]O|ENVIO|FATURA|LEANDRO TAVARES DOS REIS\s+To|Pagamento em|Saldo restante|pagamento recebido|Total a pagar|IOF|juros/i.test(desc)) continue
+    if (/EMISS[AÃ]O|ENVIO|FATURA|Pagamento em|Saldo restante|pagamento recebido|Total a pagar/i.test(desc)) continue
     if (valor <= 0 || valor > 10000) continue
+    if (desc.length < 3) continue
 
-    // Limpar descrição — remover "Total a pagar: R$..." que fica junto
-    const descLimpa = desc.replace(/Total a pagar.*$/i, '').trim()
+    // Extrair parcela ANTES de limpar
+    const parcela = extrairParcela(desc)
+
+    // Limpar descrição
+    const descLimpa = desc
+      .replace(/Total a pagar.*$/i, '')
+      .replace(/\s*-\s*Parcela\s+\d+\/\d+/gi, '')
+      .replace(/\s+/g,' ').trim()
+
     if (descLimpa.length < 3) continue
-    const parcela = extrairParcela(descLimpa)
+
+    // Evitar duplicatas por valor (o Nubank às vezes repete)
+    if (txs.find(t => t.descricao === descLimpa && t.valor === valor && t.data === `${m[1]}/${String(meses[m[2].toUpperCase()]).padStart(2,'0')}`)) continue
 
     txs.push({
       data: `${m[1]}/${String(meses[m[2].toUpperCase()]).padStart(2,'0')}`,
-      descricao: limparDesc(descLimpa),
+      descricao: descLimpa,
       valor,
       parcela
     })
