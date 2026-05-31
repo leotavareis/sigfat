@@ -84,6 +84,23 @@
     .action-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
     .note { font-size: 12px; color: var(--text3); }
     @media (max-width: 520px) { .names-grid { grid-template-columns: 1fr; } .summary-grid { grid-template-columns: 1fr; } }
+
+    /* Lançamento manual */
+    .manual-form { background: var(--surface2); border-radius: var(--radius); padding: 1rem; margin-bottom: 1rem; }
+    .manual-form .row { display: grid; grid-template-columns: 1fr 120px; gap: 8px; margin-bottom: 8px; }
+    .manual-form select { width: 100%; padding: 8px 10px; border: 1px solid var(--border2); border-radius: var(--radius-sm); font-size: 14px; color: var(--text); background: var(--surface); outline: none; }
+    .manual-form input[type="number"] { width: 100%; padding: 8px 10px; border: 1px solid var(--border2); border-radius: var(--radius-sm); font-size: 14px; color: var(--text); background: var(--surface); outline: none; }
+
+    /* Resumo WhatsApp */
+    .whatsapp-box { background: #E7FFDB; border: 1px solid #b2e0a0; border-radius: var(--radius); padding: 1rem; margin-top: 1rem; }
+    .whatsapp-box pre { font-family: monospace; font-size: 13px; white-space: pre-wrap; color: #1a1d23; line-height: 1.6; }
+    .whatsapp-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .whatsapp-title { font-size: 13px; font-weight: 600; color: #1a5c0a; display: flex; align-items: center; gap: 6px; }
+    .btn-copy { font-size: 12px; padding: 5px 12px; border-radius: var(--radius-sm); border: 1px solid #b2e0a0; background: #fff; color: #1a5c0a; cursor: pointer; font-weight: 500; display: inline-flex; align-items: center; gap: 5px; }
+    .btn-copy:hover { background: #d4f5c4; }
+    .pix-input-wrap { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+    .pix-input-wrap input { flex: 1; padding: 8px 10px; border: 1px solid var(--border2); border-radius: var(--radius-sm); font-size: 13px; color: var(--text); background: var(--surface); outline: none; }
+    .pix-input-wrap label { font-size: 13px; color: var(--text2); white-space: nowrap; }
   </style>
 </head>
 <body>
@@ -154,7 +171,37 @@
       <div class="step-num active">4</div>
       <div><div class="step-title">Resumo — quem deve o quê</div><div class="step-sub">Classificações salvas para o próximo mês</div></div>
     </div>
+
+    <!-- Lançamento manual -->
+    <div class="manual-form">
+      <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;"><i class="ti ti-plus"></i> Adicionar conta manualmente</div>
+      <div class="row">
+        <input type="text" id="manual-desc" placeholder="Descrição (ex: Jantar, Farmácia...)" />
+        <input type="number" id="manual-valor" placeholder="0.00" step="0.01" min="0" style="padding:8px 10px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:14px;" />
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px;">
+        <select id="manual-pessoa" style="flex:1;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:14px;color:var(--text);background:var(--surface);outline:none;"></select>
+        <button class="btn btn-primary" onclick="adicionarManual()" style="white-space:nowrap"><i class="ti ti-plus"></i> Adicionar</button>
+      </div>
+    </div>
+
     <div class="summary-grid" id="summary-grid"></div>
+
+    <!-- WhatsApp -->
+    <div style="margin-top:1.25rem;">
+      <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px;"><i class="ti ti-brand-whatsapp" style="color:#25D366"></i> Enviar pelo WhatsApp</div>
+      <div class="pix-input-wrap">
+        <label>Sua chave Pix:</label>
+        <input type="text" id="chave-pix" placeholder="CPF, e-mail, telefone ou chave aleatória" oninput="renderResumo()" />
+      </div>
+      <div class="whatsapp-box" id="whatsapp-box" style="display:none">
+        <div class="whatsapp-header">
+          <span class="whatsapp-title"><i class="ti ti-brand-whatsapp"></i> Mensagem pronta</span>
+          <button class="btn-copy" onclick="copiarMensagem()"><i class="ti ti-copy"></i> Copiar</button>
+        </div>
+        <pre id="whatsapp-text"></pre>
+      </div>
+    </div>
   </div>
 
 </div>
@@ -472,6 +519,7 @@ document.getElementById('btn-resumo').addEventListener('click', () => {
 })
 function renderResumo() {
   const grid = document.getElementById('summary-grid'); if (!grid) return
+  renderSelectManual()
   grid.innerHTML = pessoas.map((p,i) => {
     const txs = transacoes.filter(t => t.pessoa_id===p.id)
     if (i>0 && txs.length===0) return ''
@@ -486,10 +534,79 @@ function renderResumo() {
       </div>
     </div>`
   }).join('')
+
+  // Gerar mensagem WhatsApp
+  const temPessoas = pessoas.slice(1).some(p => transacoes.some(t => t.pessoa_id===p.id))
+  const box = document.getElementById('whatsapp-box')
+  const pre = document.getElementById('whatsapp-text')
+  if (box && pre) {
+    box.style.display = temPessoas ? 'block' : 'none'
+    if (temPessoas) pre.textContent = gerarMensagemWhatsApp()
+  }
 }
 
 function uid() { return Math.random().toString(36).slice(2)+Date.now().toString(36) }
 function mesAtual() { const d=new Date(); return `${d.getMonth()+1}/${d.getFullYear()}` }
+
+// ─── LANÇAMENTO MANUAL ────────────────────────────────────────────────────────
+function renderSelectManual() {
+  const sel = document.getElementById('manual-pessoa')
+  if (!sel) return
+  sel.innerHTML = pessoas.map(p => `<option value="${p.id}">${p.nome}</option>`).join('')
+}
+
+window.adicionarManual = async () => {
+  const desc  = document.getElementById('manual-desc')?.value.trim()
+  const valor = parseFloat(document.getElementById('manual-valor')?.value)
+  const pessoaId = document.getElementById('manual-pessoa')?.value
+  if (!desc || !valor || valor <= 0 || !pessoaId) {
+    alert('Preencha descrição, valor e pessoa.'); return
+  }
+  const tx = { id:uid(), fatura_id:null, fatura_nome:'Manual', descricao:desc, data_compra:'manual', valor, pessoa_id:pessoaId, auto:false, banco:'manual' }
+  transacoes.push(tx)
+  await supabase.from('transacoes').insert({ descricao:desc, data_compra:'manual', valor, pessoa_id:pessoaId, classificado_automaticamente:false })
+  document.getElementById('manual-desc').value = ''
+  document.getElementById('manual-valor').value = ''
+  renderResumo()
+  // feedback visual
+  const btn = document.querySelector('[onclick="adicionarManual()"]')
+  const orig = btn.innerHTML; btn.innerHTML = '<i class="ti ti-check"></i> Adicionado!'
+  setTimeout(() => btn.innerHTML = orig, 1500)
+}
+
+// ─── WHATSAPP + PIX ───────────────────────────────────────────────────────────
+function gerarMensagemWhatsApp() {
+  const pix = document.getElementById('chave-pix')?.value.trim()
+  const mes = new Date().toLocaleString('pt-BR', { month: 'long', year: 'numeric' })
+  let msg = `💳 *Fechamento do mês — ${mes}*
+
+`
+
+  pessoas.forEach((p, i) => {
+    if (i === 0) return // pula "Eu"
+    const txs = transacoes.filter(t => t.pessoa_id === p.id)
+    if (txs.length === 0) return
+    const total = txs.reduce((s,t) => s + Number(t.valor), 0)
+    msg += `*${p.nome}* — R$ ${total.toFixed(2)}
+`
+    txs.forEach(tx => { msg += `  • ${tx.descricao}: R$ ${Number(tx.valor).toFixed(2)}
+` })
+    msg += `
+`
+  })
+
+  if (pix) msg += `🔑 *Chave Pix:* ${pix}`
+  return msg
+}
+
+window.copiarMensagem = () => {
+  const txt = document.getElementById('whatsapp-text')?.textContent
+  navigator.clipboard.writeText(txt).then(() => {
+    const btn = document.querySelector('[onclick="copiarMensagem()"]')
+    const orig = btn.innerHTML; btn.innerHTML = '<i class="ti ti-check"></i> Copiado!'
+    setTimeout(() => btn.innerHTML = orig, 2000)
+  })
+}
 
 init()
 </script>
