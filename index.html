@@ -1130,9 +1130,9 @@ function gerarMensagemWhatsApp() {
     transacoes.forEach(tx => {
       if (tx.divisao) {
         const parte = tx.divisao.find(d => d.pessoa_id === pid)
-        if (parte) txsPessoa.push({ descricao: tx.descricao, valor: parte.valor, dividido: true, ntotal: tx.divisao.length })
+        if (parte) txsPessoa.push({ descricao: tx.descricao, nota: tx.nota, valor: parte.valor, dividido: true, ntotal: tx.divisao.length, parcela: tx.parcela })
       } else if (tx.pessoa_id === pid) {
-        txsPessoa.push({ descricao: tx.descricao, valor: Number(tx.valor), dividido: false })
+        txsPessoa.push({ descricao: tx.descricao, nota: tx.nota, valor: Number(tx.valor), dividido: false, parcela: tx.parcela })
       }
     })
     if (txsPessoa.length === 0) return
