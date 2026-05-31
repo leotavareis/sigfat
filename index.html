@@ -592,11 +592,24 @@ window.importarJSON = async (event) => {
 
     await garantirPessoasSalvas()
 
+    const mesRef = data.mes_referencia || mesAtual()
+
+    // Deletar faturas antigas do mesmo mês para evitar duplicatas
+    const { data: faturasMes } = await supabase
+      .from('faturas')
+      .select('id')
+      .eq('mes_referencia', mesRef)
+    if (faturasMes && faturasMes.length > 0) {
+      const ids = faturasMes.map(f => f.id)
+      await supabase.from('transacoes').delete().in('fatura_id', ids)
+      await supabase.from('faturas').delete().in('id', ids)
+    }
+
     // Registrar faturas e transações
     for (const fatura of data.faturas) {
       const { data: faturaData } = await supabase
         .from('faturas')
-        .insert({ nome_arquivo: fatura.nome, mes_referencia: data.mes_referencia || mesAtual() })
+        .insert({ nome_arquivo: fatura.nome, mes_referencia: mesRef })
         .select().single()
       const faturaId = faturaData?.id
 
