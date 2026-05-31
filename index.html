@@ -472,12 +472,23 @@ function parsearFatura(texto, nomeArquivo) {
 // ─── PROCESSAR ────────────────────────────────────────────────────────────────
 document.getElementById('btn-processar').addEventListener('click', processar)
 
+async function garantirPessoasSalvas() {
+  for (let i = 0; i < pessoas.length; i++) {
+    if (!pessoas[i].id) {
+      const { data } = await supabase.from('pessoas').insert({ nome: pessoas[i].nome, cor: CORES[i], posicao: i }).select().single()
+      if (data) pessoas[i].id = data.id
+      else pessoas[i].id = `local-${i}` // fallback local
+    }
+  }
+}
+
 async function processar() {
   pessoas = pessoas.map((p,i) => ({ ...p, nome: document.getElementById('nome-'+i)?.value.trim() || p.nome }))
   btnProc.disabled = true
   document.getElementById('loading-wrap').style.display = 'block'
   document.getElementById('upload-alert').innerHTML = ''
   transacoes = []
+  await garantirPessoasSalvas()
 
   const pendentes = arquivos.filter(a => a.status==='pendente')
   let autoCount = 0
@@ -561,9 +572,10 @@ function renderClassify() {
 function renderBtns(tx) {
   const wrap = document.getElementById('btns-'+tx.id); if (!wrap) return
   wrap.innerHTML = pessoas.map((p,i) => {
-    const sel = tx.pessoa_id===p.id
+    const pid = p.id || `local-${i}`
+    const sel = tx.pessoa_id === pid || tx.pessoa_id === p.id
     const style = sel ? `background:${CORES_BG[i]};border-color:${CORES[i]};color:${CORES[i]};font-weight:600;` : ''
-    return `<button class="assign-btn" style="${style}" onclick="atribuir('${tx.id}','${p.id}')">${p.nome}</button>`
+    return `<button class="assign-btn" style="${style}" onclick="atribuir('${tx.id}','${pid}')">${p.nome}</button>`
   }).join('')
 }
 function renderAssignButtons() { transacoes.forEach(tx => renderBtns(tx)) }
