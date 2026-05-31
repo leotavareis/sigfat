@@ -9,22 +9,38 @@
         {
           "data": "24/04",
           "descricao": "CRO-RN",
-          "valor": 156.6
+          "valor": 156.6,
+          "parcela": {
+            "atual": 2,
+            "total": 4
+          }
         },
         {
           "data": "24/04",
           "descricao": "Adiqplu*Evs Energy",
-          "valor": 175.0
+          "valor": 175.0,
+          "parcela": {
+            "atual": 11,
+            "total": 12
+          }
         },
         {
           "data": "24/04",
           "descricao": "Leandro Tavares dos Reis",
-          "valor": 150.69
+          "valor": 150.69,
+          "parcela": {
+            "atual": 2,
+            "total": 3
+          }
         },
         {
           "data": "24/04",
           "descricao": "Jim.Com* Dielson Fran",
-          "valor": 85.0
+          "valor": 85.0,
+          "parcela": {
+            "atual": 5,
+            "total": 10
+          }
         },
         {
           "data": "28/04",
@@ -44,7 +60,11 @@
         {
           "data": "18/05",
           "descricao": "Leandro Tavares dos Reis",
-          "valor": 51.37
+          "valor": 51.37,
+          "parcela": {
+            "atual": 2,
+            "total": 3
+          }
         },
         {
           "data": "19/05",
@@ -412,7 +432,11 @@
         {
           "data": "13/05",
           "descricao": "AMAZON BR",
-          "valor": 143.76
+          "valor": 143.76,
+          "parcela": {
+            "atual": 1,
+            "total": 12
+          }
         },
         {
           "data": "15/05",
