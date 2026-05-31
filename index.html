@@ -237,7 +237,10 @@
       <div class="whatsapp-box" id="whatsapp-box" style="display:none">
         <div class="whatsapp-header">
           <span class="whatsapp-title"><i class="ti ti-brand-whatsapp"></i> Mensagem pronta</span>
-          <button class="btn-copy" onclick="copiarMensagem()"><i class="ti ti-copy"></i> Copiar</button>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button class="btn-copy" onclick="copiarMensagem()"><i class="ti ti-copy"></i> Copiar</button>
+            <button class="btn-copy" id="btn-salvar-hist" onclick="salvarHistorico()" style="background:#185FA5;color:#fff;border:none;"><i class="ti ti-device-floppy"></i> Salvar no histórico</button>
+          </div>
         </div>
         <pre id="whatsapp-text"></pre>
         <div id="pix-links-nova" style="margin-top:10px;padding-top:10px;border-top:1px solid #b2e0a0;display:flex;flex-direction:column;gap:6px;"></div>
@@ -1222,6 +1225,64 @@ window.copiarMensagem = async () => {
         .insert({ mes_referencia: mes, pessoa: '_whatsapp_resumo', total: 0, resumo_whatsapp: txt })
     }
   } catch(e) { console.warn('Erro ao salvar resumo WhatsApp:', e) }
+}
+
+window.salvarHistorico = async () => {
+  const btn = document.getElementById('btn-salvar-hist')
+  const orig = btn.innerHTML
+  btn.innerHTML = '<i class="ti ti-loader"></i> Salvando...'
+  btn.disabled = true
+
+  const mes = faturas.length > 0 ? faturas[0].mes_referencia : mesAtual()
+  const txt = document.getElementById('whatsapp-text')?.textContent || ''
+
+  // Montar detalhes por pessoa
+  function getTxsPessoa(pessoaId) {
+    const resultado = []
+    transacoes.forEach(tx => {
+      if (tx.divisao) {
+        const parte = tx.divisao.find(d => d.pessoa_id === pessoaId)
+        if (parte) resultado.push({ descricao: tx.nota || tx.descricao, valor: parte.valor, parcela: tx.parcela ? `${tx.parcela.atual}/${tx.parcela.total}` : null, dividido: true })
+      } else if (tx.pessoa_id === pessoaId) {
+        resultado.push({ descricao: tx.nota || tx.descricao, valor: Number(tx.valor), parcela: tx.parcela ? `${tx.parcela.atual}/${tx.parcela.total}` : null, dividido: false })
+      }
+    })
+    return resultado
+  }
+
+  try {
+    // Salvar resumo WhatsApp (registro único por mês)
+    const { data: existWpp } = await supabase.from('historico_mensal').select('id').eq('mes_referencia', mes).eq('pessoa', '_whatsapp_resumo').maybeSingle()
+    if (existWpp) {
+      await supabase.from('historico_mensal').update({ resumo_whatsapp: txt, criado_em: new Date().toISOString() }).eq('id', existWpp.id)
+    } else {
+      await supabase.from('historico_mensal').insert({ mes_referencia: mes, pessoa: '_whatsapp_resumo', total: 0, resumo_whatsapp: txt })
+    }
+
+    // Salvar totais por pessoa
+    for (let i = 0; i < pessoas.length; i++) {
+      const p = pessoas[i]
+      const pid = p.id || `local-${i}`
+      const txs = getTxsPessoa(pid)
+      if (txs.length === 0) continue
+      const total = txs.reduce((s,t) => s + t.valor, 0)
+      const { data: existP } = await supabase.from('historico_mensal').select('id').eq('mes_referencia', mes).eq('pessoa', p.nome).maybeSingle()
+      if (existP) {
+        await supabase.from('historico_mensal').update({ total, detalhes: txs, criado_em: new Date().toISOString() }).eq('id', existP.id)
+      } else {
+        await supabase.from('historico_mensal').insert({ mes_referencia: mes, pessoa: p.nome, total, detalhes: txs })
+      }
+    }
+
+    btn.innerHTML = '<i class="ti ti-check"></i> Salvo!'
+    btn.style.background = '#1a7a3a'
+    setTimeout(() => { btn.innerHTML = orig; btn.style.background = '#185FA5'; btn.disabled = false }, 2500)
+  } catch(e) {
+    console.error('Erro ao salvar histórico:', e)
+    btn.innerHTML = '<i class="ti ti-x"></i> Erro'
+    btn.style.background = '#c0392b'
+    setTimeout(() => { btn.innerHTML = orig; btn.style.background = '#185FA5'; btn.disabled = false }, 2500)
+  }
 }
 
 init()
