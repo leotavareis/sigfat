@@ -538,7 +538,9 @@ window.importarJSON = async (event) => {
           valor: tx.valor,
           pessoa_id: pessoaIdMemoria,
           auto,
-          banco: fatura.nome.toLowerCase().replace(/\s.*/,'')
+          banco: fatura.nome.toLowerCase().replace(/\s.*/,''),
+          parcela: tx.parcela || null,
+          nota: tx.nota || null
         }
         transacoes.push(txObj)
 
