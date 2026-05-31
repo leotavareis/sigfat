@@ -221,6 +221,13 @@
           <button class="btn-copy" onclick="copiarMensagem()"><i class="ti ti-copy"></i> Copiar</button>
         </div>
         <pre id="whatsapp-text"></pre>
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid #b2e0a0;">
+          <a id="link-c6" href="#" onclick="abrirC6(event)" style="display:inline-flex;align-items:center;gap:8px;background:#242424;color:#FFD800;font-size:13px;font-weight:600;padding:9px 16px;border-radius:8px;text-decoration:none;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="4" fill="#242424"/><text x="4" y="17" font-size="13" font-family="Arial" font-weight="bold" fill="#FFD800">C6</text></svg>
+            Abrir C6 Bank para pagar o Pix
+          </a>
+          <div style="font-size:11px;color:#1a5c0a;margin-top:6px;opacity:0.8">Abre o app do C6 Bank direto na tela de Pix</div>
+        </div>
       </div>
     </div>
   </div>
@@ -253,6 +260,13 @@
             <button class="btn-copy" onclick="copiarMensagemHist()"><i class="ti ti-copy"></i> Copiar</button>
           </div>
           <pre id="hist-whatsapp-text"></pre>
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid #b2e0a0;">
+            <a href="#" onclick="abrirC6(event)" style="display:inline-flex;align-items:center;gap:8px;background:#242424;color:#FFD800;font-size:13px;font-weight:600;padding:9px 16px;border-radius:8px;text-decoration:none;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="4" fill="#242424"/><text x="4" y="17" font-size="13" font-family="Arial" font-weight="bold" fill="#FFD800">C6</text></svg>
+              Abrir C6 Bank para pagar o Pix
+            </a>
+            <div style="font-size:11px;color:#1a5c0a;margin-top:6px;opacity:0.8">Abre o app do C6 Bank direto na tela de Pix</div>
+          </div>
         </div>
       </div>
     </div>
@@ -722,6 +736,27 @@ async function abrirMes(faturaIds, label) {
 window.voltarHistorico = () => {
   document.getElementById('hist-detalhe').style.display = 'none'
   document.getElementById('hist-grid').parentElement.style.display = 'block'
+}
+
+window.abrirC6 = (e) => {
+  e.preventDefault()
+  // Deep link do C6 Bank para tela de Pix
+  // Tenta abrir o app; se não estiver instalado, abre a Play Store / App Store
+  const deeplink = 'c6bank://pix'
+  const fallbackAndroid = 'https://play.google.com/store/apps/details?id=com.c6bank.app'
+  const fallbackIOS = 'https://apps.apple.com/br/app/c6-bank/id1457780355'
+
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+  const fallback = isIOS ? fallbackIOS : fallbackAndroid
+
+  // Tenta o deep link
+  const start = Date.now()
+  window.location.href = deeplink
+
+  // Se após 1.5s ainda estiver na página, o app não abriu — redireciona para a loja
+  setTimeout(() => {
+    if (Date.now() - start < 2000) window.location.href = fallback
+  }, 1500)
 }
 
 window.copiarMensagemHist = () => {
