@@ -159,6 +159,24 @@
     <div class="action-row">
       <button class="btn btn-primary" id="btn-processar" disabled><i class="ti ti-scan"></i> Ler faturas</button>
     </div>
+
+    <!-- Divisor ou -->
+    <div style="display:flex;align-items:center;gap:10px;margin:14px 0 0;">
+      <div style="flex:1;height:1px;background:var(--border)"></div>
+      <span style="font-size:12px;color:var(--text3)">ou</span>
+      <div style="flex:1;height:1px;background:var(--border)"></div>
+    </div>
+
+    <!-- Importar JSON -->
+    <div style="margin-top:12px;">
+      <div style="font-size:13px;color:var(--text2);margin-bottom:8px;">Importar arquivo JSON gerado pelo Claude</div>
+      <label style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:var(--radius-sm);border:1px solid var(--border2);background:var(--surface);font-size:14px;font-weight:500;cursor:pointer;color:var(--text2);transition:background 0.15s;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='var(--surface)'">
+        <i class="ti ti-file-import"></i> Selecionar arquivo JSON
+        <input type="file" id="json-input" accept=".json" style="display:none" onchange="importarJSON(event)" />
+      </label>
+      <span id="json-msg" style="font-size:12px;color:var(--text3);margin-left:10px;"></span>
+    </div>
+
     <div id="loading-wrap" style="display:none">
       <div class="loading-bar"><div class="loading-fill"></div></div>
       <p class="load-msg" id="load-msg">Processando...</p>
@@ -471,6 +489,80 @@ function parsearFatura(texto, nomeArquivo) {
 
 // ─── PROCESSAR ────────────────────────────────────────────────────────────────
 document.getElementById('btn-processar').addEventListener('click', processar)
+
+// ─── IMPORTAR JSON ────────────────────────────────────────────────────────────
+window.importarJSON = async (event) => {
+  const file = event.target.files[0]
+  if (!file) return
+  const msg = document.getElementById('json-msg')
+  msg.textContent = 'Lendo...'
+
+  try {
+    const texto = await file.text()
+    const data = JSON.parse(texto)
+    transacoes = []
+
+    await garantirPessoasSalvas()
+
+    // Registrar faturas e transações
+    for (const fatura of data.faturas) {
+      const { data: faturaData } = await supabase
+        .from('faturas')
+        .insert({ nome_arquivo: fatura.nome, mes_referencia: data.mes_referencia || mesAtual() })
+        .select().single()
+      const faturaId = faturaData?.id
+
+      for (const tx of fatura.transacoes) {
+        const chave = tx.descricao?.toLowerCase().trim()
+        const pessoaIdMemoria = classificacoes[chave] || null
+        const auto = !!pessoaIdMemoria
+
+        const txObj = {
+          id: uid(),
+          fatura_id: faturaId,
+          fatura_nome: fatura.nome,
+          descricao: tx.descricao,
+          data_compra: tx.data,
+          valor: tx.valor,
+          pessoa_id: pessoaIdMemoria,
+          auto,
+          banco: fatura.nome.toLowerCase().replace(/\s.*/,'')
+        }
+        transacoes.push(txObj)
+
+        if (faturaId) {
+          await supabase.from('transacoes').insert({
+            fatura_id: faturaId,
+            descricao: tx.descricao,
+            data_compra: tx.data,
+            valor: tx.valor,
+            pessoa_id: pessoaIdMemoria,
+            classificado_automaticamente: auto
+          })
+        }
+      }
+    }
+
+    const autoCount = transacoes.filter(t => t.auto).length
+    msg.textContent = `✓ ${transacoes.length} transações importadas!`
+
+    const alertEl = document.getElementById('upload-alert')
+    if (autoCount > 0) {
+      alertEl.innerHTML = `<div class="alert alert-ok">✓ ${transacoes.length} transações importadas — ${autoCount} já classificadas pela memória!</div>`
+    } else {
+      alertEl.innerHTML = `<div class="alert alert-info">✓ ${transacoes.length} transações importadas. Classifique cada uma abaixo.</div>`
+    }
+
+    renderClassify()
+    document.getElementById('div-class').style.display = 'block'
+    document.getElementById('sec-classify').style.display = 'block'
+    document.getElementById('sec-classify').scrollIntoView({ behavior: 'smooth', block: 'start' })
+
+  } catch(e) {
+    document.getElementById('json-msg').textContent = '⚠ Erro ao ler o arquivo.'
+    console.error(e)
+  }
+}
 
 async function garantirPessoasSalvas() {
   for (let i = 0; i < pessoas.length; i++) {
