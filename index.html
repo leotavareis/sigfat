@@ -688,7 +688,8 @@ function renderClassify() {
           </div>
           <div class="tx-val">R$ ${Number(tx.valor).toFixed(2)}</div>
         </div>
-        <div style="font-size:11px;color:var(--text3);margin:4px 0 4px;">Toque para selecionar — pode escolher mais de uma para dividir igualmente</div>
+        <input type="text" class="tx-nota" placeholder="Anotação (ex: Mercado da semana, Remédio João...)" value="${tx.nota||''}" onchange="salvarNota('${tx.id}', this.value)" style="width:100%;margin-top:8px;padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:12px;color:var(--text2);background:var(--surface2);outline:none;" />
+        <div style="font-size:11px;color:var(--text3);margin:6px 0 4px;">Toque para selecionar — pode escolher mais de uma para dividir igualmente</div>
         <div class="assign-btns">${renderBtnsTx(tx)}</div>`
       g.appendChild(row)
     })
@@ -703,6 +704,16 @@ function renderAssignButtons() { transacoes.forEach(tx => {
 })}
 
 window.trocarAba = (a) => { abaAtiva=a; renderClassify() }
+
+// ─── ANOTAÇÕES ────────────────────────────────────────────────────────────────
+window.salvarNota = async (txId, nota) => {
+  const tx = transacoes.find(t => t.id === txId); if (!tx) return
+  tx.nota = nota
+  if (tx.fatura_id) {
+    await supabase.from('transacoes').update({ nota }).eq('fatura_id', tx.fatura_id).eq('descricao', tx.descricao)
+  }
+  renderResumo()
+}
 
 window.togglePessoa = async (txId, pessoaId) => {
   const tx = transacoes.find(t => t.id===txId); if (!tx) return
@@ -776,9 +787,9 @@ function renderResumo() {
     transacoes.forEach(tx => {
       if (tx.divisao) {
         const parte = tx.divisao.find(d => d.pessoa_id === pessoaId)
-        if (parte) resultado.push({ descricao: tx.descricao, valor: parte.valor, dividido: true, total: tx.divisao.length })
+        if (parte) resultado.push({ descricao: tx.nota || tx.descricao, valor: parte.valor, dividido: true, total: tx.divisao.length })
       } else if (tx.pessoa_id === pessoaId) {
-        resultado.push({ descricao: tx.descricao, valor: Number(tx.valor), dividido: false })
+        resultado.push({ descricao: tx.nota || tx.descricao, valor: Number(tx.valor), dividido: false })
       }
     })
     return resultado

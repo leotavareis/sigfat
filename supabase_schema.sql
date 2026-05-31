@@ -75,3 +75,6 @@ CREATE POLICY "acesso_publico_config" ON config FOR ALL USING (true) WITH CHECK 
 
 -- Inserir chave Pix padrão
 INSERT INTO config (chave, valor) VALUES ('pix_key', '84999152238') ON CONFLICT DO NOTHING;
+
+-- Adicionar coluna nota nas transações (rodar no SQL Editor do Supabase)
+ALTER TABLE transacoes ADD COLUMN IF NOT EXISTS nota TEXT;
