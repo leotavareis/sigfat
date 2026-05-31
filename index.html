@@ -629,7 +629,7 @@ window.importarJSON = async (event) => {
           auto,
           banco: fatura.nome.toLowerCase().replace(/\s.*/,''),
           parcela: tx.parcela || null,
-          nota: tx.nota || anotacoes_mem[tx.descricao?.toLowerCase().trim()] || null
+          nota: tx.nota || anotacoes_mem[(tx.descricao?.toLowerCase().trim() + '|' + Number(tx.valor).toFixed(2))] || anotacoes_mem[tx.descricao?.toLowerCase().trim()] || null
         }
         transacoes.push(txObj)
 
@@ -703,7 +703,7 @@ async function processar() {
         const pessoaIdMemoria = classificacoes[chave] || null
         const auto = !!pessoaIdMemoria
         if (auto) autoCount++
-        const txObj = { id:uid(), fatura_id:faturaId, fatura_nome:tx.nomeArquivo, descricao:tx.descricao, data_compra:tx.data, valor:tx.valor, pessoa_id:pessoaIdMemoria, auto, banco:tx.banco, parcela:tx.parcela||null, nota:anotacoes_mem[tx.descricao?.toLowerCase().trim()]||null }
+        const txObj = { id:uid(), fatura_id:faturaId, fatura_nome:tx.nomeArquivo, descricao:tx.descricao, data_compra:tx.data, valor:tx.valor, pessoa_id:pessoaIdMemoria, auto, banco:tx.banco, parcela:tx.parcela||null, nota:anotacoes_mem[(tx.descricao?.toLowerCase().trim()+'|'+Number(tx.valor).toFixed(2))]||anotacoes_mem[tx.descricao?.toLowerCase().trim()]||null }
         transacoes.push(txObj)
         if (faturaId) await supabase.from('transacoes').insert({ fatura_id:faturaId, descricao:tx.descricao, data_compra:tx.data, valor:tx.valor, pessoa_id:pessoaIdMemoria, classificado_automaticamente:auto })
       }
@@ -824,7 +824,7 @@ window.salvarNota = async (txId, nota) => {
   tx.nota = nota
   await supabase.from('transacoes').update({ nota }).eq('id', tx.id)
   // Salvar na memória de anotações para uso futuro
-  const chave = tx.descricao?.toLowerCase().trim()
+  const chave = (tx.descricao?.toLowerCase().trim() + '|' + Number(tx.valor).toFixed(2))
   if (chave && nota) {
     anotacoes_mem[chave] = nota
     await supabase.from('anotacoes').upsert({ estabelecimento: chave, nota, atualizado_em: new Date().toISOString() }, { onConflict: 'estabelecimento' })
