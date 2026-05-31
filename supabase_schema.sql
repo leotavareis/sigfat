@@ -63,3 +63,15 @@ INSERT INTO pessoas (nome, cor, posicao) VALUES
   ('Pessoa 5', '#534AB7', 5),
   ('Pessoa 6', '#993B1D', 6)
 ON CONFLICT DO NOTHING;
+
+-- Tabela de configurações gerais (chave Pix, preferências)
+CREATE TABLE IF NOT EXISTS config (
+  chave TEXT PRIMARY KEY,
+  valor TEXT NOT NULL,
+  atualizado_em TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE config ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "acesso_publico_config" ON config FOR ALL USING (true) WITH CHECK (true);
+
+-- Inserir chave Pix padrão
+INSERT INTO config (chave, valor) VALUES ('pix_key', '84999152238') ON CONFLICT DO NOTHING;
