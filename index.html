@@ -621,7 +621,7 @@ window.importarJSON = async (event) => {
         const auto = !!pessoaIdMemoria
 
         const txObj = {
-          id: uid(),
+          id: uid(), // temporário, será substituído pelo id real abaixo
           fatura_id: faturaId,
           fatura_nome: fatura.nome,
           descricao: tx.descricao,
@@ -633,18 +633,22 @@ window.importarJSON = async (event) => {
           parcela: tx.parcela || null,
           nota: tx.nota || anotacoes_mem[(tx.descricao?.toLowerCase().trim() + '|' + Number(tx.valor).toFixed(2) + '|' + (tx.data||''))] || anotacoes_mem[(tx.descricao?.toLowerCase().trim() + '|' + Number(tx.valor).toFixed(2))] || anotacoes_mem[tx.descricao?.toLowerCase().trim()] || null
         }
-        transacoes.push(txObj)
 
         if (faturaId) {
-          await supabase.from('transacoes').insert({
+          const { data: txDB } = await supabase.from('transacoes').insert({
             fatura_id: faturaId,
             descricao: tx.descricao,
             data_compra: tx.data,
             valor: tx.valor,
             pessoa_id: pessoaIdMemoria,
+            nota: txObj.nota,
+            parcela: tx.parcela || null,
             classificado_automaticamente: auto
-          })
+          }).select().single()
+          // Usar o id real do banco para que updates futuros funcionem
+          if (txDB) txObj.id = txDB.id
         }
+        transacoes.push(txObj)
       }
     }
 
