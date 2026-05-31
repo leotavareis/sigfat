@@ -1196,13 +1196,32 @@ window.adicionarManual = async () => {
 }
 
 // ─── WHATSAPP + PIX ───────────────────────────────────────────────────────────
-window.copiarMensagem = () => {
+window.copiarMensagem = async () => {
   const txt = document.getElementById('whatsapp-text')?.textContent
+  if (!txt) return
   navigator.clipboard.writeText(txt).then(() => {
     const btn = document.querySelector('[onclick="copiarMensagem()"]')
     const orig = btn.innerHTML; btn.innerHTML = '<i class="ti ti-check"></i> Copiado!'
     setTimeout(() => btn.innerHTML = orig, 2000)
   })
+  // Salvar resumo WhatsApp no histórico mensal automaticamente
+  const mes = faturas.length > 0 ? faturas[0].mes_referencia : mesAtual()
+  try {
+    const { data: existente } = await supabase
+      .from('historico_mensal')
+      .select('id')
+      .eq('mes_referencia', mes)
+      .eq('pessoa', '_whatsapp_resumo')
+      .maybeSingle()
+    if (existente) {
+      await supabase.from('historico_mensal')
+        .update({ resumo_whatsapp: txt, criado_em: new Date().toISOString() })
+        .eq('id', existente.id)
+    } else {
+      await supabase.from('historico_mensal')
+        .insert({ mes_referencia: mes, pessoa: '_whatsapp_resumo', total: 0, resumo_whatsapp: txt })
+    }
+  } catch(e) { console.warn('Erro ao salvar resumo WhatsApp:', e) }
 }
 
 init()
