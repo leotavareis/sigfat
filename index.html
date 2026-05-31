@@ -1072,7 +1072,7 @@ async function abrirMes(faturaIds, label) {
     if (ptxs.length===0) return
     const total = ptxs.reduce((s,t)=>s+Number(t.valor),0)
     msg += `*${p.nome}* — R$ ${total.toFixed(2)}\n`
-    ptxs.forEach(tx => { msg += `  • ${tx.descricao}: R$ ${Number(tx.valor).toFixed(2)}\n` })
+    ptxs.forEach(tx => { msg += `  • ${tx.nota || tx.descricao}${tx.parcela ? ` (${tx.parcela.atual}/${tx.parcela.total})` : ''}: R$ ${Number(tx.valor).toFixed(2)}\n` })
     if (pix) {
       const url = gerarLinkPix(pix, total, `Fechamento ${label}`)
       msg += `  💳 Pagar: ${url}\n`
@@ -1139,7 +1139,8 @@ function gerarMensagemWhatsApp() {
     const total = txsPessoa.reduce((s,t) => s + t.valor, 0)
     msg += `*${p.nome}* — R$ ${total.toFixed(2)}\n`
     txsPessoa.forEach(tx => {
-      msg += `  • ${tx.descricao}${tx.dividido ? ` (÷${tx.ntotal})` : ''}: R$ ${tx.valor.toFixed(2)}\n`
+      const label = tx.nota || tx.descricao
+      msg += `  • ${label}${tx.dividido ? ` (÷${tx.ntotal})` : ''}${tx.parcela ? ` (${tx.parcela.atual}/${tx.parcela.total})` : ''}: R$ ${tx.valor.toFixed(2)}\n`
     })
     if (pix) {
       const url = gerarLinkPix(pix, total, `Fechamento ${mes}`)
