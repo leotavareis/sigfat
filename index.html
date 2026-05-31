@@ -1003,7 +1003,7 @@ function gerarMensagemWhatsApp() {
     const total = txsPessoa.reduce((s,t) => s + t.valor, 0)
     msg += `*${p.nome}* — R$ ${total.toFixed(2)}\n`
     txsPessoa.forEach(tx => {
-      msg += `  • ${tx.descricao}${tx.dividido?` (÷${tx.ntotal})`:\"\"}: R$ ${tx.valor.toFixed(2)}\n`
+      msg += `  • ${tx.descricao}${tx.dividido ? ` (÷${tx.ntotal})` : ''}: R$ ${tx.valor.toFixed(2)}\n`
     })
     if (pix) {
       const url = gerarLinkPix(pix, total, `Fechamento ${mes}`)
