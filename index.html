@@ -675,11 +675,17 @@ function renderBtnsTx(tx) {
 
 function renderClassify() {
   const faturas = [...new Set(transacoes.map(t => t.fatura_nome))]
+  const naoClass = transacoes.filter(t => !txClassificada(t)).length
+
   document.getElementById('tab-bar').innerHTML =
     `<button class="tab ${abaAtiva==='todas'?'active':''}" onclick="trocarAba('todas')">Todas</button>` +
-    faturas.map(f => `<button class="tab ${abaAtiva===f?'active':''}" onclick="trocarAba('${f}')">${f}</button>`).join('')
+    faturas.map(f => `<button class="tab ${abaAtiva===f?'active':''}" onclick="trocarAba('${f}')">${f}</button>`).join('') +
+    (naoClass > 0 ? `<button class="tab ${abaAtiva==='pendentes'?'active':''}" onclick="trocarAba('pendentes')" style="${abaAtiva==='pendentes'?'':'background:#FFF3CD;border-color:#856404;color:#856404;'}"><i class="ti ti-clock"></i> Pendentes (${naoClass})</button>` : '')
 
-  const filtradas = abaAtiva==='todas' ? transacoes : transacoes.filter(t => t.fatura_nome===abaAtiva)
+  let filtradas
+  if (abaAtiva === 'todas') filtradas = transacoes
+  else if (abaAtiva === 'pendentes') filtradas = transacoes.filter(t => !txClassificada(t))
+  else filtradas = transacoes.filter(t => t.fatura_nome === abaAtiva)
   const agrupadas = {}
   filtradas.forEach(tx => { if (!agrupadas[tx.fatura_nome]) agrupadas[tx.fatura_nome]=[]; agrupadas[tx.fatura_nome].push(tx) })
 
