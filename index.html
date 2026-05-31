@@ -822,30 +822,6 @@ window.adicionarManual = async () => {
 }
 
 // ─── WHATSAPP + PIX ───────────────────────────────────────────────────────────
-function gerarMensagemWhatsApp() {
-  const pix = document.getElementById('chave-pix')?.value.trim()
-  const mes = new Date().toLocaleString('pt-BR', { month: 'long', year: 'numeric' })
-  let msg = `💳 *Fechamento do mês — ${mes}*
-
-`
-
-  pessoas.forEach((p, i) => {
-    if (i === 0) return // pula "Eu"
-    const txs = transacoes.filter(t => t.pessoa_id === p.id)
-    if (txs.length === 0) return
-    const total = txs.reduce((s,t) => s + Number(t.valor), 0)
-    msg += `*${p.nome}* — R$ ${total.toFixed(2)}
-`
-    txs.forEach(tx => { msg += `  • ${tx.descricao}: R$ ${Number(tx.valor).toFixed(2)}
-` })
-    msg += `
-`
-  })
-
-  if (pix) msg += `🔑 *Chave Pix:* ${pix}`
-  return msg
-}
-
 window.copiarMensagem = () => {
   const txt = document.getElementById('whatsapp-text')?.textContent
   navigator.clipboard.writeText(txt).then(() => {
