@@ -803,9 +803,8 @@ window.trocarAba = (a) => { abaAtiva=a; renderClassify() }
 window.salvarNota = async (txId, nota) => {
   const tx = transacoes.find(t => t.id === txId); if (!tx) return
   tx.nota = nota
-  if (tx.fatura_id) {
-    await supabase.from('transacoes').update({ nota }).eq('fatura_id', tx.fatura_id).eq('descricao', tx.descricao)
-  }
+  // Salva pelo id real da transação no Supabase
+  await supabase.from('transacoes').update({ nota }).eq('id', tx.id)
   renderResumo()
 }
 
