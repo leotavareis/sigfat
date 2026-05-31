@@ -294,13 +294,14 @@ const CORES    = ['#185FA5','#0F6E56','#854F0B','#993556','#3B6D11','#534AB7','#
 const CORES_BG = ['#E6F1FB','#E1F5EE','#FAEEDA','#FBEAF0','#EAF3DE','#EEEDFE','#FAECE7']
 const NOMES_P  = ['Eu','Pessoa 1','Pessoa 2','Pessoa 3','Pessoa 4','Pessoa 5','Pessoa 6']
 
-let pessoas = [], classificacoes = {}, transacoes = [], arquivos = [], abaAtiva = 'todas'
+let pessoas = [], classificacoes = {}, anotacoes_mem = {}, transacoes = [], arquivos = [], abaAtiva = 'todas'
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 async function init() {
   setSyncStatus('Conectando...')
   await carregarPessoas()
   await carregarClassificacoes()
+  await carregarAnotacoes()
   renderNomes()
   await carregarChavePix()
   await carregarTransacoesSalvas()
@@ -317,6 +318,11 @@ async function carregarClassificacoes() {
   const { data } = await supabase.from('classificacoes').select('estabelecimento, pessoa_id')
   classificacoes = {}
   if (data) data.forEach(c => { classificacoes[c.estabelecimento.toLowerCase()] = c.pessoa_id })
+}
+async function carregarAnotacoes() {
+  const { data } = await supabase.from('anotacoes').select('estabelecimento, nota')
+  anotacoes_mem = {}
+  if (data) data.forEach(a => { anotacoes_mem[a.estabelecimento.toLowerCase()] = a.nota })
 }
 
 async function carregarTransacoesSalvas() {
@@ -610,7 +616,7 @@ window.importarJSON = async (event) => {
           auto,
           banco: fatura.nome.toLowerCase().replace(/\s.*/,''),
           parcela: tx.parcela || null,
-          nota: tx.nota || null
+          nota: tx.nota || anotacoes_mem[tx.descricao?.toLowerCase().trim()] || null
         }
         transacoes.push(txObj)
 
@@ -684,7 +690,7 @@ async function processar() {
         const pessoaIdMemoria = classificacoes[chave] || null
         const auto = !!pessoaIdMemoria
         if (auto) autoCount++
-        const txObj = { id:uid(), fatura_id:faturaId, fatura_nome:tx.nomeArquivo, descricao:tx.descricao, data_compra:tx.data, valor:tx.valor, pessoa_id:pessoaIdMemoria, auto, banco:tx.banco }
+        const txObj = { id:uid(), fatura_id:faturaId, fatura_nome:tx.nomeArquivo, descricao:tx.descricao, data_compra:tx.data, valor:tx.valor, pessoa_id:pessoaIdMemoria, auto, banco:tx.banco, parcela:tx.parcela||null, nota:anotacoes_mem[tx.descricao?.toLowerCase().trim()]||null }
         transacoes.push(txObj)
         if (faturaId) await supabase.from('transacoes').insert({ fatura_id:faturaId, descricao:tx.descricao, data_compra:tx.data, valor:tx.valor, pessoa_id:pessoaIdMemoria, classificado_automaticamente:auto })
       }
@@ -803,8 +809,13 @@ window.trocarAba = (a) => { abaAtiva=a; renderClassify() }
 window.salvarNota = async (txId, nota) => {
   const tx = transacoes.find(t => t.id === txId); if (!tx) return
   tx.nota = nota
-  // Salva pelo id real da transação no Supabase
   await supabase.from('transacoes').update({ nota }).eq('id', tx.id)
+  // Salvar na memória de anotações para uso futuro
+  const chave = tx.descricao?.toLowerCase().trim()
+  if (chave && nota) {
+    anotacoes_mem[chave] = nota
+    await supabase.from('anotacoes').upsert({ estabelecimento: chave, nota, atualizado_em: new Date().toISOString() }, { onConflict: 'estabelecimento' })
+  }
   renderResumo()
 }
 
