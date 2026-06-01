@@ -16,6 +16,20 @@
     }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
     header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 1.5rem; height: 56px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow); }
+    .header-nav { display: flex; gap: 6px; }
+    .header-nav-btn { font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border2); background: var(--surface); color: var(--text2); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+    .header-nav-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .floating-nav { position: fixed; z-index: 200; display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--border); box-shadow: 0 4px 16px rgba(0,0,0,.12); border-radius: 14px; padding: 6px; }
+    .fnav-btn { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 10px; font-weight: 600; color: var(--text2); background: transparent; border: none; cursor: pointer; padding: 6px 14px; border-radius: 10px; }
+    .fnav-btn i { font-size: 18px; }
+    .fnav-btn.active { background: var(--primary); color: #fff; }
+    @media (min-width: 769px) {
+      .floating-nav { bottom: 24px; right: 24px; flex-direction: column; }
+    }
+    @media (max-width: 768px) {
+      .header-nav { display: none; }
+      .floating-nav { bottom: 16px; left: 50%; transform: translateX(-50%); flex-direction: row; }
+    }
     .logo { font-size: 18px; font-weight: 700; color: var(--primary); letter-spacing: -0.5px; }
     .logo span { font-weight: 400; color: var(--text2); font-size: 14px; margin-left: 6px; }
     .main { max-width: 820px; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
@@ -70,6 +84,8 @@
     .banco-badge { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: var(--surface); border: 1px solid var(--border2); color: var(--text3); margin-left: 6px; }
     .assign-btns { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
     .assign-btn { font-size: 12px; padding: 4px 10px; border-radius: 20px; border: 1px solid var(--border2); background: var(--surface); color: var(--text2); cursor: pointer; transition: all 0.1s; }
+    .div-mode-btn { font-size: 11px; padding: 2px 8px; border-radius: 6px; border: 1px solid var(--border2); background: var(--surface); color: var(--text2); cursor: pointer; }
+    .div-mode-btn:hover { background: var(--surface2); }
     .assign-btn:hover { background: var(--surface2); }
     .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .summary-card { background: var(--surface2); border-radius: var(--radius); padding: 1rem; }
@@ -118,12 +134,26 @@
 <body>
 <header>
   <div class="logo">SigFat <span>Gestão de Faturas</span></div>
-  <div id="sync-status" style="font-size:12px;color:var(--text3)"></div>
+  <div style="display:flex;align-items:center;gap:14px">
+    <div class="header-nav">
+      <button class="header-nav-btn active" id="hnav-nova" onclick="trocarView('nova')"><i class="ti ti-home"></i> Início</button>
+      <button class="header-nav-btn" id="hnav-hist" onclick="trocarView('historico')"><i class="ti ti-history"></i> Histórico</button>
+    </div>
+    <div id="sync-status" style="font-size:12px;color:var(--text3)"></div>
+  </div>
 </header>
+
+<!-- Barra de navegação flutuante (fixa) -->
+<div class="floating-nav">
+  <button class="fnav-btn active" id="fnav-nova" onclick="trocarView('nova')"><i class="ti ti-home"></i><span>Início</span></button>
+  <button class="fnav-btn" id="fnav-hist" onclick="trocarView('historico')"><i class="ti ti-history"></i><span>Histórico</span></button>
+  <button class="fnav-btn" onclick="window.scrollTo({top:0,behavior:'smooth'})"><i class="ti ti-arrow-up"></i><span>Topo</span></button>
+</div>
+
 <div class="main">
 
-  <!-- NAVEGAÇÃO -->
-  <div class="nav-tabs">
+  <!-- NAVEGAÇÃO (antiga, oculta — navbar agora fica no header e flutuante) -->
+  <div class="nav-tabs" style="display:none">
     <div class="nav-tab active" onclick="trocarView('nova')">Nova fatura</div>
     <div class="nav-tab" onclick="trocarView('historico')">Histórico</div>
   </div>
@@ -298,34 +328,58 @@ const CORES_BG = ['#E6F1FB','#E1F5EE','#FAEEDA','#FBEAF0','#EAF3DE','#EEEDFE','#
 const NOMES_P  = ['Eu','Pessoa 1','Pessoa 2','Pessoa 3','Pessoa 4','Pessoa 5','Pessoa 6']
 
 let pessoas = [], classificacoes = {}, anotacoes_mem = {}, transacoes = [], arquivos = [], abaAtiva = 'todas', mesAtualRef = ''
+let memoria = {}  // chave canônica -> { pessoa_id, divisao, nota }
+let pixCfg = { tipo:'telefone', chave:'', nome:'', cidade:'' }
+
+// Chave canônica única de identidade de uma transação (usada em TODA persistência/dedup)
+function chaveTx(tx) {
+  const desc = (tx.descricao||'').toLowerCase().trim()
+  const valor = Number(tx.valor||0).toFixed(2)
+  const data = tx.data_compra || tx.data || ''
+  const parc = tx.parcela ? `${tx.parcela.atual}/${tx.parcela.total}` : ''
+  return `${desc}|${valor}|${data}|${parc}`
+}
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 async function init() {
   setSyncStatus('Conectando...')
   await carregarPessoas()
-  await carregarClassificacoes()
-  await carregarAnotacoes()
+  await carregarMemoria()
   renderNomes()
   await carregarChavePix()
   await carregarTransacoesSalvas()
   setSyncStatus('✓ Conectado')
   setTimeout(() => setSyncStatus(''), 2000)
 }
+
+// Carrega a memória unificada: chave canônica -> {pessoa_id, divisao, nota}
+async function carregarMemoria() {
+  const { data } = await supabase.from('memoria_transacao').select('chave, pessoa_id, divisao, nota')
+  memoria = {}
+  if (data) data.forEach(m => { memoria[m.chave] = { pessoa_id:m.pessoa_id, divisao:m.divisao, nota:m.nota } })
+}
+
+// Salva/atualiza a memória de uma transação (uma única fonte de verdade)
+async function salvarMemoria(tx) {
+  const chave = chaveTx(tx)
+  const registro = { pessoa_id: tx.pessoa_id || null, divisao: tx.divisao || null, nota: tx.nota || null }
+  memoria[chave] = registro
+  await supabase.from('memoria_transacao').upsert({
+    chave, descricao: tx.descricao, ...registro, atualizado_em: new Date().toISOString()
+  }, { onConflict: 'chave' })
+}
+
+// Aplica a memória conhecida a uma transação recém-importada
+function aplicarMemoria(tx) {
+  const m = memoria[chaveTx(tx)]
+  if (!m) return { ...tx, pessoa_id:null, divisao:null, nota:tx.nota||null, auto:false }
+  return { ...tx, pessoa_id:m.pessoa_id||null, divisao:m.divisao||null, nota:m.nota||tx.nota||null, auto:!!(m.pessoa_id||m.divisao) }
+}
 function setSyncStatus(m) { document.getElementById('sync-status').textContent = m }
 
 async function carregarPessoas() {
   const { data } = await supabase.from('pessoas').select('*').order('posicao')
   pessoas = (data && data.length > 0) ? data : NOMES_P.map((n,i) => ({ id:null, nome:n, cor:CORES[i], posicao:i }))
-}
-async function carregarClassificacoes() {
-  const { data } = await supabase.from('classificacoes').select('estabelecimento, pessoa_id')
-  classificacoes = {}
-  if (data) data.forEach(c => { classificacoes[c.estabelecimento.toLowerCase()] = c.pessoa_id })
-}
-async function carregarAnotacoes() {
-  const { data } = await supabase.from('anotacoes').select('estabelecimento, nota')
-  anotacoes_mem = {}
-  if (data) data.forEach(a => { anotacoes_mem[a.estabelecimento.toLowerCase()] = a.nota })
 }
 
 async function carregarTransacoesSalvas() {
@@ -599,20 +653,21 @@ window.importarJSON = async (event) => {
     await garantirPessoasSalvas()
 
     const mesRef = data.mes_referencia || mesAtual()
-    mesAtualRef = mesRef  // atualiza variável global
+    mesAtualRef = mesRef
 
-    // Deletar faturas antigas do mesmo mês para evitar duplicatas
-    const { data: faturasMes } = await supabase
-      .from('faturas')
-      .select('id')
-      .eq('mes_referencia', mesRef)
+    // Apagar transações antigas do mês ANTES de recriar — mas a classificação
+    // (pessoa/divisão/nota) está preservada na tabela memoria_transacao,
+    // então será reaplicada por chave canônica. Nada se perde.
+    const { data: faturasMes } = await supabase.from('faturas').select('id').eq('mes_referencia', mesRef)
     if (faturasMes && faturasMes.length > 0) {
       const ids = faturasMes.map(f => f.id)
       await supabase.from('transacoes').delete().in('fatura_id', ids)
       await supabase.from('faturas').delete().in('id', ids)
     }
 
-    // Registrar faturas e transações
+    const chavesVistas = new Set()  // dedup dentro do próprio arquivo
+    let autoCount = 0, dupCount = 0
+
     for (const fatura of data.faturas) {
       const { data: faturaData } = await supabase
         .from('faturas')
@@ -621,51 +676,49 @@ window.importarJSON = async (event) => {
       const faturaId = faturaData?.id
 
       for (const tx of fatura.transacoes) {
-        const chave = tx.descricao?.toLowerCase().trim()
-        const pessoaIdMemoria = classificacoes[chave] || null
-        const auto = !!pessoaIdMemoria
-
-        const txObj = {
-          id: uid(), // temporário, será substituído pelo id real abaixo
+        const base = {
           fatura_id: faturaId,
           fatura_nome: fatura.nome,
           descricao: tx.descricao,
           data_compra: tx.data,
           valor: tx.valor,
-          pessoa_id: pessoaIdMemoria,
-          auto,
           banco: fatura.nome.toLowerCase().replace(/\s.*/,''),
           parcela: tx.parcela || null,
-          nota: tx.nota || anotacoes_mem[(tx.descricao?.toLowerCase().trim() + '|' + Number(tx.valor).toFixed(2) + '|' + (tx.data||''))] || anotacoes_mem[(tx.descricao?.toLowerCase().trim() + '|' + Number(tx.valor).toFixed(2))] || anotacoes_mem[tx.descricao?.toLowerCase().trim()] || null
+          nota: tx.nota || null
         }
+        const chave = chaveTx(base)
+        // Dedup: se já vimos essa chave neste arquivo, pula (evita duplicata)
+        if (chavesVistas.has(chave)) { dupCount++; continue }
+        chavesVistas.add(chave)
+
+        // Aplica memória conhecida (pessoa + divisão + nota)
+        const txObj = aplicarMemoria({ ...base, id: uid() })
+        if (txObj.auto) autoCount++
 
         if (faturaId) {
           const { data: txDB } = await supabase.from('transacoes').insert({
             fatura_id: faturaId,
-            descricao: tx.descricao,
-            data_compra: tx.data,
-            valor: tx.valor,
-            pessoa_id: pessoaIdMemoria,
+            descricao: txObj.descricao,
+            data_compra: txObj.data_compra,
+            valor: txObj.valor,
+            pessoa_id: txObj.pessoa_id,
+            divisao: txObj.divisao,
             nota: txObj.nota,
-            parcela: tx.parcela || null,
-            classificado_automaticamente: auto
+            parcela: txObj.parcela,
+            classificado_automaticamente: txObj.auto
           }).select().single()
-          // Usar o id real do banco para que updates futuros funcionem
           if (txDB) txObj.id = txDB.id
         }
         transacoes.push(txObj)
       }
     }
 
-    const autoCount = transacoes.filter(t => t.auto).length
     msg.textContent = `✓ ${transacoes.length} transações importadas!`
-
     const alertEl = document.getElementById('upload-alert')
-    if (autoCount > 0) {
-      alertEl.innerHTML = `<div class="alert alert-ok">✓ ${transacoes.length} transações importadas — ${autoCount} já classificadas pela memória!</div>`
-    } else {
-      alertEl.innerHTML = `<div class="alert alert-info">✓ ${transacoes.length} transações importadas. Classifique cada uma abaixo.</div>`
-    }
+    let aviso = `✓ ${transacoes.length} transações importadas`
+    if (autoCount > 0) aviso += ` — ${autoCount} já classificadas pela memória`
+    if (dupCount > 0) aviso += ` · ${dupCount} duplicatas ignoradas`
+    alertEl.innerHTML = `<div class="alert ${autoCount>0?'alert-ok':'alert-info'}">${aviso}!</div>`
 
     renderClassify()
     document.getElementById('div-class').style.display = 'block'
@@ -814,11 +867,14 @@ function renderClassify() {
         </div>
         <input type="text" class="tx-nota" placeholder="Anotação (ex: Mercado da semana, Remédio João...)" value="${tx.nota||''}" onchange="salvarNota('${tx.id}', this.value)" style="width:100%;margin-top:8px;padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:12px;color:var(--text2);background:var(--surface2);outline:none;" />
         <div style="font-size:11px;color:var(--text3);margin:6px 0 4px;">Toque para selecionar — pode escolher mais de uma para dividir igualmente</div>
-        <div class="assign-btns">${renderBtnsTx(tx)}</div>`
+        <div class="assign-btns">${renderBtnsTx(tx)}</div>
+        <div class="div-editor"></div>`
       g.appendChild(row)
     })
     container.appendChild(g)
   })
+  // Renderizar editores de divisão para transações já divididas
+  transacoes.forEach(tx => { if (tx.divisao && tx.divisao.length > 1) renderEditorDivisao(tx) })
   atualizarBadge(); atualizarBtnResumo()
 }
 
@@ -834,67 +890,115 @@ window.salvarNota = async (txId, nota) => {
   const tx = transacoes.find(t => t.id === txId); if (!tx) return
   tx.nota = nota
   await supabase.from('transacoes').update({ nota }).eq('id', tx.id)
-  // Salvar na memória de anotações para uso futuro
-  const chave = (tx.descricao?.toLowerCase().trim() + '|' + Number(tx.valor).toFixed(2) + '|' + (tx.data_compra||''))
-  if (chave && nota) {
-    anotacoes_mem[chave] = nota
-    await supabase.from('anotacoes').upsert({ estabelecimento: chave, nota, atualizado_em: new Date().toISOString() }, { onConflict: 'estabelecimento' })
-  }
+  await salvarMemoria(tx)  // memória unificada por chave canônica
   renderResumo()
 }
 
 window.togglePessoa = async (txId, pessoaId) => {
   const tx = transacoes.find(t => t.id===txId); if (!tx) return
 
-  // Pegar lista atual de selecionados
-  let selecionadas = tx.divisao
-    ? tx.divisao.map(d => d.pessoa_id)
-    : tx.pessoa_id ? [tx.pessoa_id] : []
+  let selecionadas = tx.divisao ? tx.divisao.map(d => d.pessoa_id) : (tx.pessoa_id ? [tx.pessoa_id] : [])
+  if (selecionadas.includes(pessoaId)) selecionadas = selecionadas.filter(id => id !== pessoaId)
+  else selecionadas.push(pessoaId)
 
-  // Toggle: adiciona ou remove
-  if (selecionadas.includes(pessoaId)) {
-    selecionadas = selecionadas.filter(id => id !== pessoaId)
-  } else {
-    selecionadas.push(pessoaId)
-  }
-
-  // Atualizar tx
   if (selecionadas.length === 0) {
-    tx.pessoa_id = null
-    tx.divisao = null
+    tx.pessoa_id = null; tx.divisao = null
   } else if (selecionadas.length === 1) {
-    tx.pessoa_id = selecionadas[0]
-    tx.divisao = null
+    tx.pessoa_id = selecionadas[0]; tx.divisao = null
   } else {
-    // Dividir igualmente
-    const valorPorPessoa = Number(tx.valor) / selecionadas.length
-    tx.divisao = selecionadas.map(pid => ({ pessoa_id: pid, valor: valorPorPessoa }))
-    tx.pessoa_id = selecionadas[0] // marca como classificada
+    // Divisão igual por padrão (editável depois pelo botão "ajustar valores")
+    const vp = Number(tx.valor) / selecionadas.length
+    tx.divisao = selecionadas.map((pid,idx) => ({ pessoa_id: pid, valor: idx === selecionadas.length-1 ? Number((Number(tx.valor) - vp*(selecionadas.length-1)).toFixed(2)) : Number(vp.toFixed(2)) }))
+    tx.pessoa_id = selecionadas[0]
   }
-
   tx.auto = false
 
-  // Atualizar botões e badges sem re-renderizar tudo
   const wrap = document.querySelector(`#row-${tx.id} .assign-btns`)
   if (wrap) wrap.innerHTML = renderBtnsTx(tx)
-  const infoEl = document.querySelector(`#row-${tx.id} .divisao-info`)
-
+  renderEditorDivisao(tx)
   atualizarBadge(); atualizarBtnResumo(); renderResumo()
 
-  // Salvar no Supabase
-  const updateData = {
-    pessoa_id: tx.pessoa_id,
-    divisao: tx.divisao || null,
-    classificado_automaticamente: false
-  }
-  await supabase.from('transacoes').update(updateData).eq('id', tx.id)
+  await supabase.from('transacoes').update({ pessoa_id: tx.pessoa_id, divisao: tx.divisao || null, classificado_automaticamente: false }).eq('id', tx.id)
+  await salvarMemoria(tx)  // memória unificada (preserva pessoa E divisão)
+}
 
-  // Salvar memória se 1 pessoa
-  if (!tx.divisao && tx.pessoa_id) {
-    const chave = tx.descricao?.toLowerCase().trim()
-    classificacoes[chave] = tx.pessoa_id
-    await supabase.from('classificacoes').upsert({ estabelecimento:chave, pessoa_id:tx.pessoa_id, atualizado_em:new Date().toISOString() }, { onConflict:'estabelecimento' })
+// Editor de divisão por valor/porcentagem — aparece quando há 2+ pessoas
+function renderEditorDivisao(tx) {
+  const cont = document.querySelector(`#row-${tx.id} .div-editor`)
+  if (!cont) return
+  if (!tx.divisao || tx.divisao.length < 2) { cont.innerHTML = ''; return }
+  const total = Number(tx.valor)
+  cont.innerHTML = `
+    <div style="margin-top:8px;padding:8px;background:var(--surface2);border-radius:8px;border:1px solid var(--border2)">
+      <div style="font-size:11px;color:var(--text3);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center">
+        <span>Ajustar divisão (total R$ ${total.toFixed(2)})</span>
+        <span style="display:flex;gap:4px">
+          <button onclick="setModoDivisao('${tx.id}','reais')" id="modo-reais-${tx.id}" class="div-mode-btn">R$</button>
+          <button onclick="setModoDivisao('${tx.id}','pct')" id="modo-pct-${tx.id}" class="div-mode-btn">%</button>
+        </span>
+      </div>
+      ${tx.divisao.map(d => {
+        const p = pessoas.find(x => (x.id||`local-${pessoas.indexOf(x)}`) === d.pessoa_id)
+        const pct = total>0 ? (d.valor/total*100) : 0
+        return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <span style="flex:1;font-size:12px">${p?p.nome:'?'}</span>
+          <input type="number" step="0.01" value="${d.valor.toFixed(2)}" data-pid="${d.pessoa_id}" data-mode="reais"
+            oninput="atualizarValorDivisao('${tx.id}','${d.pessoa_id}',this.value)"
+            style="width:90px;padding:4px 8px;border:1px solid var(--border2);border-radius:6px;font-size:12px;text-align:right" />
+          <span style="font-size:11px;color:var(--text3);width:42px;text-align:right" class="pct-label-${tx.id}-${d.pessoa_id}">${pct.toFixed(0)}%</span>
+        </div>`
+      }).join('')}
+      <div class="div-soma-${tx.id}" style="font-size:11px;text-align:right;margin-top:4px"></div>
+    </div>`
+  atualizarSomaDivisao(tx)
+}
+
+window.setModoDivisao = (txId, modo) => {
+  const tx = transacoes.find(t => t.id===txId); if (!tx) return
+  document.querySelectorAll(`#row-${txId} input[data-pid]`).forEach(inp => {
+    const d = tx.divisao.find(x => x.pessoa_id === inp.dataset.pid)
+    if (!d) return
+    inp.dataset.mode = modo
+    if (modo === 'pct') inp.value = (Number(tx.valor)>0 ? (d.valor/Number(tx.valor)*100) : 0).toFixed(1)
+    else inp.value = d.valor.toFixed(2)
+  })
+}
+
+window.atualizarValorDivisao = (txId, pid, valor) => {
+  const tx = transacoes.find(t => t.id===txId); if (!tx) return
+  const inp = document.querySelector(`#row-${txId} input[data-pid="${pid}"]`)
+  const modo = inp?.dataset.mode || 'reais'
+  const d = tx.divisao.find(x => x.pessoa_id === pid); if (!d) return
+  let v = parseFloat(valor) || 0
+  if (modo === 'pct') v = Number(tx.valor) * v / 100
+  d.valor = Number(v.toFixed(2))
+  const pctEl = document.querySelector(`.pct-label-${txId}-${pid}`)
+  if (pctEl) pctEl.textContent = (Number(tx.valor)>0 ? (d.valor/Number(tx.valor)*100) : 0).toFixed(0)+'%'
+  atualizarSomaDivisao(tx)
+}
+
+function atualizarSomaDivisao(tx) {
+  const somaEl = document.querySelector(`.div-soma-${tx.id}`)
+  if (!somaEl) return
+  const soma = tx.divisao.reduce((s,d) => s + d.valor, 0)
+  const total = Number(tx.valor)
+  const diff = Math.abs(soma - total)
+  if (diff < 0.01) {
+    somaEl.innerHTML = `<span style="color:#0F6E56">✓ Soma confere: R$ ${soma.toFixed(2)}</span>`
+    persistirDivisao(tx)
+  } else {
+    somaEl.innerHTML = `<span style="color:#C0392B">⚠ Soma R$ ${soma.toFixed(2)} ≠ total R$ ${total.toFixed(2)} (faltam R$ ${(total-soma).toFixed(2)})</span>`
   }
+}
+
+let _persistTimer = {}
+function persistirDivisao(tx) {
+  clearTimeout(_persistTimer[tx.id])
+  _persistTimer[tx.id] = setTimeout(async () => {
+    await supabase.from('transacoes').update({ divisao: tx.divisao }).eq('id', tx.id)
+    await salvarMemoria(tx)
+    renderResumo()
+  }, 600)
 }
 
 function atualizarBadge() {
@@ -974,24 +1078,34 @@ function renderResumo() {
 
 // ─── NAVEGAÇÃO ───────────────────────────────────────────────────────────────
 window.trocarView = (v) => {
-  document.querySelectorAll('.nav-tab').forEach((t,i) => t.classList.toggle('active', (i===0&&v==='nova')||(i===1&&v==='historico')))
   document.getElementById('view-nova').classList.toggle('active', v==='nova')
   document.getElementById('view-historico').classList.toggle('active', v==='historico')
+  // Sincronizar estados ativos de todas as barras
+  document.getElementById('hnav-nova')?.classList.toggle('active', v==='nova')
+  document.getElementById('hnav-hist')?.classList.toggle('active', v==='historico')
+  document.getElementById('fnav-nova')?.classList.toggle('active', v==='nova')
+  document.getElementById('fnav-hist')?.classList.toggle('active', v==='historico')
+  document.querySelectorAll('.nav-tab').forEach((t,i) => t.classList.toggle('active', (i===0&&v==='nova')||(i===1&&v==='historico')))
   if (v==='historico') carregarHistorico()
+  window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
 // ─── CHAVE PIX PERSISTENTE ───────────────────────────────────────────────────
 async function carregarChavePix() {
-  const { data } = await supabase.from('config').select('valor').eq('chave','pix_key').single()
-  const val = data?.valor || ''
+  const { data } = await supabase.from('config').select('chave, valor')
+  const cfg = {}; if (data) data.forEach(c => cfg[c.chave] = c.valor)
+  pixCfg.chave  = cfg.pix_key || ''
+  pixCfg.tipo   = cfg.pix_tipo || 'telefone'
+  pixCfg.nome   = cfg.pix_nome || 'LEANDRO TAVARES'
+  pixCfg.cidade = cfg.pix_cidade || 'NATAL'
   const input = document.getElementById('chave-pix')
-  if (input && val) input.value = val
+  if (input && pixCfg.chave) input.value = pixCfg.chave
 }
 async function salvarChavePix(pix) {
   await supabase.from('config').upsert({ chave:'pix_key', valor:pix }, { onConflict:'chave' })
 }
 document.addEventListener('change', e => {
-  if (e.target.id === 'chave-pix') { salvarChavePix(e.target.value.trim()); renderResumo() }
+  if (e.target.id === 'chave-pix') { pixCfg.chave = e.target.value.trim(); salvarChavePix(e.target.value.trim()); renderResumo() }
 })
 
 // ─── HISTÓRICO ────────────────────────────────────────────────────────────────
@@ -1039,69 +1153,106 @@ async function carregarHistorico() {
     const card = document.createElement('div')
     card.className = 'hist-card'
     card.innerHTML = `<div class="hist-mes">${label}</div><div class="hist-total">R$ ${total.toFixed(2)}</div><div class="hist-pessoas">${nomePessoas.join(', ') || '—'}</div>`
-    card.onclick = () => abrirMes(g.faturaIds, label)
+    card.onclick = () => abrirMes(g.faturaIds, label, mes)
     grid.appendChild(card)
   }
 }
 
-async function abrirMes(faturaIds, label) {
+async function abrirMes(faturaIds, label, mesRef) {
   document.getElementById('hist-grid').parentElement.style.display = 'none'
   const det = document.getElementById('hist-detalhe')
   det.style.display = 'block'
   document.getElementById('hist-detalhe-titulo').textContent = label
 
-  const { data: txs } = await supabase
-    .from('transacoes')
-    .select('descricao, valor, pessoa_id')
-    .in('fatura_id', faturaIds)
+  // 1) Tentar snapshot salvo (fiel ao que foi fechado, com divisão e nota)
+  let snapshot = null
+  if (mesRef) {
+    const { data: snap } = await supabase.from('resumo_mensal').select('*').eq('mes_referencia', mesRef).maybeSingle?.() || {}
+    if (snap) snapshot = snap
+  }
 
-  const { data: cfg } = await supabase.from('config').select('valor').eq('chave','pix_key').single()
-  const pix = cfg?.valor || ''
+  // 2) Calcular das transações respeitando DIVISÃO e NOTA
+  const { data: txsRaw } = await supabase
+    .from('transacoes')
+    .select('descricao, valor, pessoa_id, divisao, nota, parcela')
+    .in('fatura_id', faturaIds)
+  const txs = txsRaw || []
+
+  function txsDaPessoa(pid) {
+    const out = []
+    txs.forEach(tx => {
+      if (tx.divisao && Array.isArray(tx.divisao)) {
+        const parte = tx.divisao.find(d => d.pessoa_id === pid)
+        if (parte) out.push({ label: tx.nota||tx.descricao, valor: Number(parte.valor), dividido: tx.divisao.length, parcela: tx.parcela })
+      } else if (tx.pessoa_id === pid) {
+        out.push({ label: tx.nota||tx.descricao, valor: Number(tx.valor), dividido: 0, parcela: tx.parcela })
+      }
+    })
+    return out
+  }
 
   const grid = document.getElementById('hist-summary-grid')
   grid.innerHTML = pessoas.map((p,i) => {
-    const ptxs = (txs||[]).filter(t => t.pessoa_id===p.id)
+    const ptxs = txsDaPessoa(p.id)
     if (i>0 && ptxs.length===0) return ''
-    const total = ptxs.reduce((s,t) => s+Number(t.valor), 0)
+    const total = ptxs.reduce((s,t) => s+t.valor, 0)
     return `<div class="summary-card">
       <div class="summary-name"><span class="dot" style="background:${CORES[i]}"></span>${p.nome}</div>
       <div class="summary-total">R$ ${total.toFixed(2)}</div>
       <div class="summary-items">
-        ${ptxs.slice(0,8).map(tx=>`<div class="summary-line"><span class="sl-desc">${tx.descricao}</span><span>R$ ${Number(tx.valor).toFixed(2)}</span></div>`).join('')}
+        ${ptxs.slice(0,8).map(tx=>`<div class="summary-line"><span class="sl-desc">${tx.label}${tx.parcela?` <span style="font-size:10px;opacity:.6">(${tx.parcela.atual}/${tx.parcela.total})</span>`:''}${tx.dividido?` <span style="font-size:10px;opacity:.6">(÷${tx.dividido})</span>`:''}</span><span>R$ ${tx.valor.toFixed(2)}</span></div>`).join('')}
         ${ptxs.length>8?`<div class="summary-line" style="color:var(--text3)">+ ${ptxs.length-8} mais</div>`:''}
         ${ptxs.length===0?'<div style="font-size:12px;color:var(--text3)">Nenhuma compra</div>':''}
       </div>
     </div>`
   }).join('')
 
-  // Gerar mensagem WhatsApp do histórico
-  let msg = `💳 *Fechamento — ${label}*\n\n`
-  const linksHist = []
+  // Mensagem WhatsApp: usa snapshot salvo se existir, senão recalcula
+  let msg, linksHist = []
+  if (snapshot && snapshot.resumo_whatsapp) {
+    msg = snapshot.resumo_whatsapp
+  } else {
+    msg = `💳 *Fechamento — ${label}*\n\n`
+    pessoas.forEach((p,i) => {
+      if (i===0) return
+      const ptxs = txsDaPessoa(p.id)
+      if (ptxs.length===0) return
+      const total = ptxs.reduce((s,t)=>s+t.valor,0)
+      msg += `*${p.nome}* — R$ ${total.toFixed(2)}\n`
+      ptxs.forEach(tx => { msg += `  • ${tx.label}${tx.parcela ? ` (${tx.parcela.atual}/${tx.parcela.total})` : ''}${tx.dividido?` (÷${tx.dividido})`:''}: R$ ${tx.valor.toFixed(2)}\n` })
+      if (pixCfg.chave) {
+        const codigo = gerarPixCopiaECola(total, `SIGFAT${i}`)
+        msg += `  💳 Pix (copie e cole no app):\n  ${codigo}\n`
+      }
+      msg += '\n'
+    })
+    if (pixCfg.chave) msg += `🔑 *Chave Pix:* ${pixCfg.chave}`
+  }
+
+  // Botões "Copiar Pix" — sempre gerados a partir dos totais reais (snapshot ou cálculo)
   pessoas.forEach((p,i) => {
     if (i===0) return
-    const ptxs = (txs||[]).filter(t=>t.pessoa_id===p.id)
-    if (ptxs.length===0) return
-    const total = ptxs.reduce((s,t)=>s+Number(t.valor),0)
-    msg += `*${p.nome}* — R$ ${total.toFixed(2)}\n`
-    ptxs.forEach(tx => { msg += `  • ${tx.nota || tx.descricao}${tx.parcela ? ` (${tx.parcela.atual}/${tx.parcela.total})` : ''}: R$ ${Number(tx.valor).toFixed(2)}\n` })
-    if (pix) {
-      const url = gerarLinkPix(pix, total, `Fechamento ${label}`)
-      msg += `  💳 Pagar: ${url}\n`
-      linksHist.push({ nome: p.nome, total, url })
-    }
-    msg += '\n'
+    const ptxs = txsDaPessoa(p.id)
+    if (ptxs.length===0 || !pixCfg.chave) return
+    const total = ptxs.reduce((s,t)=>s+t.valor,0)
+    linksHist.push({ nome: p.nome, total, codigo: gerarPixCopiaECola(total, `SIGFAT${i}`) })
   })
-  if (pix) msg += `🔑 *Chave Pix:* ${pix}`
+
   histMsgAtual = msg
   document.getElementById('hist-whatsapp-text').textContent = msg
 
-  // Renderizar botões de link Pix
   const pixContHist = document.getElementById('pix-links-hist')
   if (pixContHist) {
     pixContHist.innerHTML = linksHist.map(l =>
-      `<a href="${l.url}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;background:#185FA5;color:#fff;font-size:13px;font-weight:600;padding:9px 16px;border-radius:8px;text-decoration:none;width:fit-content;">
-        <i class="ti ti-qrcode" style="font-size:16px"></i> Link Pix para ${l.nome} — R$ ${l.total.toFixed(2)}
-      </a>`
+      `<div style="display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #b2e0a0;border-radius:8px;padding:8px 12px;">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:600;color:#185FA5">${l.nome} — R$ ${l.total.toFixed(2)}</div>
+          <div style="font-size:10px;color:#888;font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${l.codigo}</div>
+        </div>
+        <button onclick="copiarPix('${l.codigo}', this)" style="background:#185FA5;color:#fff;border:none;font-size:12px;font-weight:600;padding:7px 12px;border-radius:6px;cursor:pointer;white-space:nowrap">
+          <i class="ti ti-copy"></i> Copiar Pix
+        </button>
+      </div>`
     ).join('')
   }
 }
@@ -1119,14 +1270,56 @@ window.copiarMensagemHist = () => {
   })
 }
 
+// ─── PIX BR CODE (copia-e-cola padrão Banco Central) ──────────────────────────
+// Monta o payload EMV do Pix com CRC16-CCITT. Gera o código copia-e-cola real.
+function normalizarChavePix(tipo, chave) {
+  let c = (chave||'').trim()
+  if (tipo === 'telefone') {
+    const d = c.replace(/\D/g,'')
+    c = d.startsWith('55') ? `+${d}` : `+55${d}`   // E.164: +55DDDNUMERO
+  } else if (tipo === 'cpf' || tipo === 'cnpj') {
+    c = c.replace(/\D/g,'')
+  }
+  return c
+}
+function emv(id, valor) {
+  const len = valor.length.toString().padStart(2,'0')
+  return `${id}${len}${valor}`
+}
+function crc16(payload) {
+  let crc = 0xFFFF
+  for (let i = 0; i < payload.length; i++) {
+    crc ^= payload.charCodeAt(i) << 8
+    for (let j = 0; j < 8; j++) {
+      crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) : (crc << 1)
+      crc &= 0xFFFF
+    }
+  }
+  return crc.toString(16).toUpperCase().padStart(4,'0')
+}
+function gerarPixCopiaECola(valor, txtid) {
+  const chave = normalizarChavePix(pixCfg.tipo, pixCfg.chave)
+  if (!chave) return ''
+  const nome = (pixCfg.nome||'RECEBEDOR').substring(0,25).toUpperCase()
+  const cidade = (pixCfg.cidade||'BRASIL').substring(0,15).toUpperCase()
+  const mai = emv('00','BR.GOV.BCB.PIX') + emv('01', chave)
+  let p = ''
+  p += emv('00','01')                          // payload format
+  p += emv('26', mai)                          // merchant account info (Pix)
+  p += emv('52','0000')                        // merchant category code
+  p += emv('53','986')                         // moeda BRL
+  if (valor > 0) p += emv('54', valor.toFixed(2))  // valor
+  p += emv('58','BR')                          // país
+  p += emv('59', nome)                         // nome recebedor
+  p += emv('60', cidade)                       // cidade
+  const tid = (txtid||'***').replace(/[^A-Za-z0-9]/g,'').substring(0,25) || '***'
+  p += emv('62', emv('05', tid))               // txid
+  p += '6304'                                  // CRC placeholder
+  return p + crc16(p)
+}
+
 function uid() { return Math.random().toString(36).slice(2)+Date.now().toString(36) }
 function mesAtual() { const d=new Date(); return `${d.getMonth()+1}/${d.getFullYear()}` }
-
-// ─── LINK PIX UNIVERSAL ───────────────────────────────────────────────────────
-function gerarLinkPix(chave, valor, descricao) {
-  const params = new URLSearchParams({ chave, valor: valor.toFixed(2), descricao })
-  return `https://pix.com.br/?${params.toString()}`
-}
 
 function gerarMensagemWhatsApp() {
   const pix = document.getElementById('chave-pix')?.value.trim()
@@ -1153,25 +1346,38 @@ function gerarMensagemWhatsApp() {
       const label = tx.nota || tx.descricao
       msg += `  • ${label}${tx.dividido ? ` (÷${tx.ntotal})` : ''}${tx.parcela ? ` (${tx.parcela.atual}/${tx.parcela.total})` : ''}: R$ ${tx.valor.toFixed(2)}\n`
     })
-    if (pix) {
-      const url = gerarLinkPix(pix, total, `Fechamento ${mes}`)
-      msg += `  💳 Pagar: ${url}\n`
-      links.push({ nome: p.nome, total, url })
+    if (pixCfg.chave) {
+      const codigo = gerarPixCopiaECola(total, `SIGFAT${i}`)
+      msg += `  💳 Pix (copie e cole no app do banco):\n  ${codigo}\n`
+      links.push({ nome: p.nome, total, codigo })
     }
     msg += '\n'
   })
 
-  if (pix) msg += `🔑 *Chave Pix:* ${pix}`
+  if (pixCfg.chave) msg += `🔑 *Chave Pix:* ${pixCfg.chave}`
 
   const cont = document.getElementById('pix-links-nova')
   if (cont) {
-    cont.innerHTML = links.map(l =>
-      `<a href="${l.url}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;background:#185FA5;color:#fff;font-size:13px;font-weight:600;padding:9px 16px;border-radius:8px;text-decoration:none;width:fit-content;">
-        <i class="ti ti-qrcode" style="font-size:16px"></i> Link Pix para ${l.nome} — R$ ${l.total.toFixed(2)}
-      </a>`
+    cont.innerHTML = links.map((l,idx) =>
+      `<div style="display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #b2e0a0;border-radius:8px;padding:8px 12px;">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:600;color:#185FA5">${l.nome} — R$ ${l.total.toFixed(2)}</div>
+          <div style="font-size:10px;color:#888;font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${l.codigo}</div>
+        </div>
+        <button onclick="copiarPix('${l.codigo}', this)" style="background:#185FA5;color:#fff;border:none;font-size:12px;font-weight:600;padding:7px 12px;border-radius:6px;cursor:pointer;white-space:nowrap">
+          <i class="ti ti-copy"></i> Copiar Pix
+        </button>
+      </div>`
     ).join('')
   }
   return msg
+}
+
+window.copiarPix = (codigo, btn) => {
+  navigator.clipboard.writeText(codigo).then(() => {
+    const orig = btn.innerHTML; btn.innerHTML = '<i class="ti ti-check"></i> Copiado!'
+    setTimeout(() => btn.innerHTML = orig, 2000)
+  })
 }
 
 // ─── LANÇAMENTO MANUAL ────────────────────────────────────────────────────────
@@ -1209,24 +1415,6 @@ window.copiarMensagem = async () => {
     const orig = btn.innerHTML; btn.innerHTML = '<i class="ti ti-check"></i> Copiado!'
     setTimeout(() => btn.innerHTML = orig, 2000)
   })
-  // Salvar resumo WhatsApp no histórico mensal automaticamente
-  const mes = mesAtualRef || mesAtual()
-  try {
-    const { data: existente } = await supabase
-      .from('historico_mensal')
-      .select('id')
-      .eq('mes_referencia', mes)
-      .eq('pessoa', '_whatsapp_resumo')
-      .maybeSingle()
-    if (existente) {
-      await supabase.from('historico_mensal')
-        .update({ resumo_whatsapp: txt, criado_em: new Date().toISOString() })
-        .eq('id', existente.id)
-    } else {
-      await supabase.from('historico_mensal')
-        .insert({ mes_referencia: mes, pessoa: '_whatsapp_resumo', total: 0, resumo_whatsapp: txt })
-    }
-  } catch(e) { console.warn('Erro ao salvar resumo WhatsApp:', e) }
 }
 
 window.salvarHistorico = async () => {
@@ -1234,7 +1422,6 @@ window.salvarHistorico = async () => {
   const orig = btn.innerHTML
   btn.innerHTML = '<i class="ti ti-loader"></i> Salvando...'
   btn.disabled = true
-
   const finalizar = (ok) => {
     btn.innerHTML = ok ? '<i class="ti ti-check"></i> Salvo!' : '<i class="ti ti-x"></i> Erro'
     btn.style.background = ok ? '#1a7a3a' : '#c0392b'
@@ -1244,54 +1431,38 @@ window.salvarHistorico = async () => {
   const mes = mesAtualRef || mesAtual()
   const txt = document.getElementById('whatsapp-text')?.textContent || ''
 
-  // Montar detalhes por pessoa usando a mesma lógica do renderResumo
-  function getTxsPessoa(pessoaId) {
-    const resultado = []
+  // Detalhes por pessoa respeitando divisão e nota (mesma lógica do resumo)
+  function getTxsPessoa(pid) {
+    const out = []
     transacoes.forEach(tx => {
       const div = Array.isArray(tx.divisao) ? tx.divisao : null
       if (div) {
-        const parte = div.find(d => d.pessoa_id === pessoaId)
-        if (parte) resultado.push({ descricao: tx.nota || tx.descricao, valor: Number(parte.valor), parcela: tx.parcela ? `${tx.parcela.atual}/${tx.parcela.total}` : null, dividido: true })
-      } else if (tx.pessoa_id === pessoaId) {
-        resultado.push({ descricao: tx.nota || tx.descricao, valor: Number(tx.valor), parcela: tx.parcela ? `${tx.parcela.atual}/${tx.parcela.total}` : null, dividido: false })
+        const parte = div.find(d => d.pessoa_id === pid)
+        if (parte) out.push({ descricao: tx.nota || tx.descricao, valor: Number(parte.valor), parcela: tx.parcela?`${tx.parcela.atual}/${tx.parcela.total}`:null, dividido: div.length })
+      } else if (tx.pessoa_id === pid) {
+        out.push({ descricao: tx.nota || tx.descricao, valor: Number(tx.valor), parcela: tx.parcela?`${tx.parcela.atual}/${tx.parcela.total}`:null, dividido: 0 })
       }
     })
-    return resultado
-  }
-
-  // Upsert genérico — busca por mes+pessoa e atualiza ou insere
-  async function upsertHistorico(mes, pessoa, payload) {
-    const { data: rows, error } = await supabase
-      .from('historico_mensal')
-      .select('id')
-      .eq('mes_referencia', mes)
-      .eq('pessoa', pessoa)
-    if (error) throw error
-    if (rows && rows.length > 0) {
-      const { error: e2 } = await supabase.from('historico_mensal')
-        .update({ ...payload, criado_em: new Date().toISOString() })
-        .eq('id', rows[0].id)
-      if (e2) throw e2
-    } else {
-      const { error: e3 } = await supabase.from('historico_mensal')
-        .insert({ mes_referencia: mes, pessoa, ...payload })
-      if (e3) throw e3
-    }
+    return out
   }
 
   try {
-    // Salvar resumo WhatsApp
-    await upsertHistorico(mes, '_whatsapp_resumo', { total: 0, resumo_whatsapp: txt })
-
-    // Salvar totais por pessoa
-    for (let i = 0; i < pessoas.length; i++) {
-      const p = pessoas[i]
+    const totais = []
+    pessoas.forEach((p,i) => {
       const pid = p.id || `local-${i}`
       const txs = getTxsPessoa(pid)
-      if (txs.length === 0) continue
-      const total = txs.reduce((s,t) => s + t.valor, 0)
-      await upsertHistorico(mes, p.nome, { total, detalhes: txs, resumo_whatsapp: null })
-    }
+      if (txs.length === 0 && i>0) return
+      totais.push({ pessoa: p.nome, total: txs.reduce((s,t)=>s+t.valor,0), itens: txs })
+    })
+
+    // Snapshot único por mês na tabela resumo_mensal
+    const { error } = await supabase.from('resumo_mensal').upsert({
+      mes_referencia: mes,
+      resumo_whatsapp: txt,
+      totais,
+      atualizado_em: new Date().toISOString()
+    }, { onConflict: 'mes_referencia' })
+    if (error) throw error
 
     finalizar(true)
   } catch(e) {
