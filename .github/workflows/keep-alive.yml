@@ -1,0 +1,24 @@
+name: Supabase Keep-Alive
+
+on:
+  schedule:
+    - cron: '0 8 */5 * *'  # A cada 5 dias às 8h UTC
+  workflow_dispatch:        # Permite rodar manualmente se precisar
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            "https://wjtrzpwerkyaaoshzegs.supabase.co/rest/v1/pessoas?select=id&limit=1" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}")
+          echo "Status HTTP: $STATUS"
+          if [ "$STATUS" = "200" ]; then
+            echo "✓ Supabase ativo"
+          else
+            echo "⚠ Resposta inesperada: $STATUS"
+            exit 1
+          fi
