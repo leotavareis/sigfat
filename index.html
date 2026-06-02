@@ -45,27 +45,11 @@
     .dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
     input[type="text"] { width: 100%; padding: 8px 10px; border: 1px solid var(--border2); border-radius: var(--radius-sm); font-size: 14px; color: var(--text); background: var(--surface); outline: none; transition: border-color 0.15s; }
     input[type="text"]:focus { border-color: var(--primary); }
-    .upload-zone { border: 2px dashed var(--border2); border-radius: var(--radius); padding: 2rem; text-align: center; cursor: pointer; transition: all 0.15s; position: relative; }
-    .upload-zone:hover, .upload-zone.drag { background: var(--surface2); border-color: var(--primary); }
-    .upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
-    .upload-icon { font-size: 32px; color: var(--text3); margin-bottom: 8px; }
-    .upload-hint { font-size: 14px; color: var(--text2); }
-    .upload-hint strong { color: var(--primary); }
     .file-list { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
-    .file-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--surface2); border-radius: var(--radius-sm); font-size: 13px; }
-    .file-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .file-status { font-size: 12px; color: var(--text3); white-space: nowrap; }
-    .file-status.ok { color: #0F6E56; } .file-status.err { color: #A32D2D; }
-    .file-remove { cursor: pointer; color: var(--text3); margin-left: 4px; }
-    .file-remove:hover { color: #A32D2D; }
     .btn { display: inline-flex; align-items: center; gap: 7px; padding: 9px 18px; border-radius: var(--radius-sm); border: none; font-size: 14px; font-weight: 500; cursor: pointer; transition: opacity 0.15s; }
     .btn-primary { background: var(--primary); color: #fff; }
     .btn-primary:hover { opacity: 0.88; }
     .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
-    .loading-bar { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; margin-top: 12px; }
-    .loading-fill { height: 100%; background: var(--primary); border-radius: 2px; animation: loadanim 1.2s ease-in-out infinite; }
-    @keyframes loadanim { 0%{width:0;margin-left:0} 50%{width:60%;margin-left:20%} 100%{width:0;margin-left:100%} }
-    .load-msg { font-size: 13px; color: var(--text2); margin-top: 6px; }
     .alert { font-size: 13px; padding: 10px 14px; border-radius: var(--radius-sm); margin-top: 10px; }
     .alert-info { background: #EAF3FF; color: #185FA5; }
     .alert-err { background: #FDEEEE; color: #A32D2D; }
@@ -152,7 +136,35 @@
 <div class="floating-nav">
   <button class="fnav-btn active" id="fnav-nova" onclick="trocarView('nova')"><i class="ti ti-home"></i><span>Início</span></button>
   <button class="fnav-btn" id="fnav-hist" onclick="trocarView('historico')"><i class="ti ti-history"></i><span>Histórico</span></button>
+  <button class="fnav-btn" onclick="abrirModalManual()"><i class="ti ti-plus"></i><span>Adicionar</span></button>
   <button class="fnav-btn" onclick="window.scrollTo({top:0,behavior:'smooth'})"><i class="ti ti-arrow-up"></i><span>Topo</span></button>
+</div>
+
+<!-- Modal de lançamento manual -->
+<div id="modal-manual" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border-radius:var(--radius);padding:20px;max-width:400px;width:90%;margin:auto;box-shadow:0 8px 32px rgba(0,0,0,.18);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <span style="font-size:14px;font-weight:600;color:var(--text);"><i class="ti ti-plus"></i> Adicionar conta</span>
+      <button onclick="fecharModalManual()" style="background:none;border:none;font-size:20px;color:var(--text3);cursor:pointer;">&times;</button>
+    </div>
+    <input type="text" id="modal-desc" placeholder="Descrição (ex: Aluguel, Farmácia...)" style="width:100%;padding:9px 12px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:14px;margin-bottom:8px;box-sizing:border-box;" />
+    <input type="number" id="modal-valor" placeholder="0.00" step="0.01" min="0" style="width:100%;padding:9px 12px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:14px;margin-bottom:8px;box-sizing:border-box;" />
+    <select id="modal-pessoa" style="width:100%;padding:9px 12px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:14px;margin-bottom:8px;box-sizing:border-box;"></select>
+    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer;margin-bottom:6px;">
+      <input type="checkbox" id="modal-parcelado" onchange="document.getElementById('modal-parcelas-wrap').style.display=this.checked?'flex':'none'" /> Parcelado
+    </label>
+    <div id="modal-parcelas-wrap" style="display:none;gap:8px;align-items:center;margin-bottom:10px;">
+      <span style="font-size:12px;color:var(--text2);">Parcela</span>
+      <input type="number" id="modal-parc-atual" value="1" min="1" max="99" style="width:48px;padding:6px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:13px;text-align:center;" />
+      <span style="font-size:12px;color:var(--text2);">/</span>
+      <input type="number" id="modal-parc-total" value="12" min="1" max="99" style="width:48px;padding:6px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:13px;text-align:center;" />
+      <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text3);cursor:pointer;">
+        <input type="checkbox" id="modal-recorrente" checked /> Repetir
+      </label>
+    </div>
+    <button class="btn btn-primary" onclick="adicionarManualModal()" style="width:100%;justify-content:center;"><i class="ti ti-plus"></i> Adicionar</button>
+    <div id="modal-feedback" style="font-size:12px;margin-top:6px;text-align:center;"></div>
+  </div>
 </div>
 
 <div class="main">
@@ -173,50 +185,27 @@
       <div><div class="step-title">Quem são as pessoas?</div><div class="step-sub">Nomes salvos automaticamente na nuvem</div></div>
     </div>
     <div class="names-grid" id="names-grid"></div>
-    <div style="margin-top:12px">
+    <div style="margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
       <button class="btn btn-primary" id="btn-salvar-pessoas"><i class="ti ti-device-floppy"></i> Salvar nomes</button>
+      <button class="btn" onclick="adicionarPessoa()" style="border:1px dashed var(--border2);color:var(--text2);font-size:12px;"><i class="ti ti-user-plus"></i> Adicionar pessoa</button>
       <span id="pessoas-msg" class="note" style="margin-left:10px"></span>
     </div>
   </div>
 
-  <!-- STEP 2: Upload -->
+  <!-- STEP 2: Importar fatura -->
   <div class="card">
     <div class="step-header">
       <div class="step-num active">2</div>
-      <div><div class="step-title">Envie as faturas</div><div class="step-sub">PDF — leitura direta sem IA. Nubank, Amazon, Banco do Brasil e C6 Bank</div></div>
+      <div><div class="step-title">Importe a fatura</div><div class="step-sub">Arquivo JSON gerado pelo Claude</div></div>
     </div>
-    <div class="upload-zone" id="dropzone">
-      <input type="file" id="file-input" accept=".pdf" multiple />
-      <div class="upload-icon"><i class="ti ti-upload"></i></div>
-      <div class="upload-hint">Arraste os PDFs aqui ou <strong>clique para selecionar</strong></div>
-    </div>
-    <div class="file-list" id="file-list"></div>
-    <div class="action-row">
-      <button class="btn btn-primary" id="btn-processar" disabled><i class="ti ti-scan"></i> Ler faturas</button>
-    </div>
-
-    <!-- Divisor ou -->
-    <div style="display:flex;align-items:center;gap:10px;margin:14px 0 0;">
-      <div style="flex:1;height:1px;background:var(--border)"></div>
-      <span style="font-size:12px;color:var(--text3)">ou</span>
-      <div style="flex:1;height:1px;background:var(--border)"></div>
-    </div>
-
-    <!-- Importar JSON -->
-    <div style="margin-top:12px;">
-      <div style="font-size:13px;color:var(--text2);margin-bottom:8px;">Importar arquivo JSON gerado pelo Claude</div>
-      <label style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:var(--radius-sm);border:1px solid var(--border2);background:var(--surface);font-size:14px;font-weight:500;cursor:pointer;color:var(--text2);transition:background 0.15s;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='var(--surface)'">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <label style="display:inline-flex;align-items:center;gap:7px;padding:10px 20px;border-radius:var(--radius-sm);border:1px solid var(--primary);background:var(--surface);font-size:14px;font-weight:600;cursor:pointer;color:var(--primary);transition:background 0.15s;" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='var(--surface)'">
         <i class="ti ti-file-import"></i> Selecionar arquivo JSON
         <input type="file" id="json-input" accept=".json" style="display:none" onchange="importarJSON(event)" />
       </label>
-      <span id="json-msg" style="font-size:12px;color:var(--text3);margin-left:10px;"></span>
+      <span id="json-msg" style="font-size:12px;color:var(--text3);"></span>
     </div>
-
-    <div id="loading-wrap" style="display:none">
-      <div class="loading-bar"><div class="loading-fill"></div></div>
-      <p class="load-msg" id="load-msg">Processando...</p>
-    </div>
-    <div id="upload-alert"></div>
+    <div id="upload-alert" style="margin-top:8px;"></div>
   </div>
 
   <hr class="divider" id="div-class" style="display:none" />
@@ -335,8 +324,6 @@
 
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
-import * as pdfjsLib from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.mjs'
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.worker.mjs'
 
 const SUPABASE_URL = import.meta.env?.VITE_SUPABASE_URL || window.__SUPABASE_URL__ || ''
 const SUPABASE_KEY = import.meta.env?.VITE_SUPABASE_ANON_KEY || window.__SUPABASE_KEY__ || ''
@@ -489,176 +476,6 @@ document.getElementById('btn-salvar-pessoas').addEventListener('click', async ()
   setTimeout(() => msg.textContent = '', 2000)
 })
 
-// ─── UPLOAD ───────────────────────────────────────────────────────────────────
-const fileInput = document.getElementById('file-input')
-const dropzone  = document.getElementById('dropzone')
-const btnProc   = document.getElementById('btn-processar')
-fileInput.addEventListener('change', e => addArquivos(Array.from(e.target.files)))
-dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag') })
-dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag'))
-dropzone.addEventListener('drop', e => { e.preventDefault(); dropzone.classList.remove('drag'); addArquivos(Array.from(e.dataTransfer.files)) })
-
-function addArquivos(novos) {
-  novos.forEach(f => { if (!arquivos.find(x => x.file.name===f.name && x.file.size===f.size)) arquivos.push({ file:f, status:'pendente', id:uid() }) })
-  renderFileList(); btnProc.disabled = arquivos.length === 0
-}
-function renderFileList() {
-  document.getElementById('file-list').innerHTML = arquivos.map((a,i) => `
-    <div class="file-item">
-      <i class="ti ti-file-type-pdf" style="font-size:17px;color:#A32D2D;flex-shrink:0"></i>
-      <span class="file-name">${a.file.name}</span>
-      <span class="file-status ${a.status==='ok'?'ok':a.status==='erro'?'err':''}">${a.status==='ok'?'✓ lido':a.status==='erro'?'⚠ erro':(a.file.size/1024).toFixed(0)+' KB'}</span>
-      ${a.status==='pendente'?`<span class="file-remove" onclick="removerArquivo(${i})"><i class="ti ti-x"></i></span>`:''}
-    </div>`).join('')
-}
-window.removerArquivo = (i) => { arquivos.splice(i,1); renderFileList(); btnProc.disabled = arquivos.length===0 }
-
-// ─── EXTRAÇÃO DE TEXTO DO PDF ─────────────────────────────────────────────────
-async function extrairTextoPDF(file) {
-  const arrayBuffer = await file.arrayBuffer()
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
-  let texto = ''
-  for (let p = 1; p <= pdf.numPages; p++) {
-    const page = await pdf.getPage(p)
-    const content = await page.getTextContent()
-    texto += content.items.map(i => i.str).join(' ') + '\n'
-  }
-  return texto
-}
-
-// ─── PARSERS ──────────────────────────────────────────────────────────────────
-function detectarBanco(texto) {
-  if (/Nu Pagamentos|nubank/i.test(texto)) return 'nubank'
-  if (/AMAZON MASTERCARD|Bradescard|AMAZONMKTPLC/i.test(texto)) return 'amazon'
-  if (/BANCO DO BRASIL|SMILES|Ourocard/i.test(texto)) return 'bb'
-  if (/C6 BANK|C6Bank|C6 Carbon/i.test(texto)) return 'c6'
-  return 'generico'
-}
-
-function parseValor(str) {
-  if (!str) return 0
-  return parseFloat(str.replace(/\./g,'').replace(',','.')) || 0
-}
-function limparDesc(d) {
-  return d.replace(/\s*-\s*Parcela\s+\d+\/\d+/gi,'').replace(/\(parc\s+\d+\/\d+\)/gi,'').replace(/\(\d+\/\d+\)/g,'').replace(/\s+/g,' ').trim()
-}
-
-function extrairParcela(d) {
-  const m = d.match(/Parcela\s+(\d+)\/(\d+)/i) || d.match(/\(parc\s+(\d+)\/(\d+)\)/i) || d.match(/\((\d+)\/(\d+)\)/)
-  if (m) return { atual: parseInt(m[1]), total: parseInt(m[2]) }
-  return null
-}
-
-function parsearNubank(texto) {
-  const txs = []
-  const meses = {JAN:1,FEV:2,MAR:3,ABR:4,MAI:5,JUN:6,JUL:7,AGO:8,SET:9,OUT:10,NOV:11,DEZ:12}
-
-  const secaoMatch = texto.match(/TRANSA[ÇC][OÕ]ES\s+DE\s+[\s\S]*/i)
-  const secao = secaoMatch ? secaoMatch[0] : texto
-
-  // Regex ampliada: captura DD MMM e tudo até o valor final (incluindo "- Parcela X/Y")
-  const re = /(\d{2})\s+(JAN|FEV|MAR|ABR|MAI|JUN|JUL|AGO|SET|OUT|NOV|DEZ)\s+([\s\S]+?)\s+R\$\s*([\d\.]+,\d{2})(?!\d)/gi
-  let m
-  while ((m = re.exec(secao)) !== null) {
-    const desc = m[3].replace(/\s+/g,' ').trim()
-    const valor = parseValor(m[4])
-
-    if (/EMISS[AÃ]O|ENVIO|FATURA|Pagamento em|Saldo restante|pagamento recebido|Total a pagar/i.test(desc)) continue
-    if (valor <= 0 || valor > 10000) continue
-    if (desc.length < 3) continue
-
-    // Extrair parcela ANTES de limpar
-    const parcela = extrairParcela(desc)
-
-    // Limpar descrição
-    const descLimpa = desc
-      .replace(/Total a pagar.*$/i, '')
-      .replace(/\s*-\s*Parcela\s+\d+\/\d+/gi, '')
-      .replace(/\s+/g,' ').trim()
-
-    if (descLimpa.length < 3) continue
-
-    // Evitar duplicatas por valor (o Nubank às vezes repete)
-    if (txs.find(t => t.descricao === descLimpa && t.valor === valor && t.data === `${m[1]}/${String(meses[m[2].toUpperCase()]).padStart(2,'0')}`)) continue
-
-    txs.push({
-      data: `${m[1]}/${String(meses[m[2].toUpperCase()]).padStart(2,'0')}`,
-      descricao: descLimpa,
-      valor,
-      parcela
-    })
-  }
-  return txs
-}
-
-function parsearAmazon(texto) {
-  const txs = []
-  const secao = texto.match(/Lan[çc]amentos[\s\S]*/i)?.[0] || texto
-  const linhas = secao.split('\n')
-  for (const linha of linhas) {
-    const m = linha.match(/^(\d{2}\/\d{2})\s+(.+?)\s+([\d]+,\d{2})\s*$/)
-    if (!m) continue
-    const desc = m[2].trim(); const valor = parseValor(m[3])
-    if (/PAGAMENTO RECEBIDO|OBRIGADO/i.test(desc) || valor<=0) continue
-    const parcela = extrairParcela(desc)
-    txs.push({ data:m[1], descricao:limparDesc(desc), valor, parcela })
-  }
-  return txs
-}
-
-function parsearBB(texto) {
-  const txs = []
-  const secao = texto.match(/Lan[çc]amentos nesta fatura[\s\S]*/i)?.[0] || texto
-  const re = /(\d{2}\/\d{2})\s+(.+?)\s+BR\s+R\$\s*([\d\.]+,\d{2})/g
-  let m
-  while ((m = re.exec(secao)) !== null) {
-    const desc = m[2].trim(); const valor = parseValor(m[3])
-    if (/PAGAMENTO|PGTO|DESC AUTOMATICO|SALDO FATURA/i.test(desc) || valor<=0) continue
-    const parcela = extrairParcela(desc)
-    txs.push({ data:m[1], descricao:limparDesc(desc), valor, parcela })
-  }
-  return txs
-}
-
-function parsearC6(texto) {
-  const txs = []; const meses={jan:1,fev:2,mar:3,abr:4,mai:5,jun:6,jul:7,ago:8,set:9,out:10,nov:11,dez:12}
-  const re = /(\d{2})\s+(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)\s+(.+?)\s+([\d]+[.,]\d{2})\s*$/gmi
-  let m
-  while ((m = re.exec(texto)) !== null) {
-    const desc = m[3].trim(); const valor = parseValor(m[4])
-    if (/Inclusao de Pagamento|Estorno Tarifa|Anuidade.*Estorno/i.test(desc) || valor<=0) continue
-    const parcela = extrairParcela(desc)
-    txs.push({ data:`${m[1]}/${String(meses[m[2].toLowerCase()]).padStart(2,'0')}`, descricao:limparDesc(desc), valor, parcela })
-  }
-  return txs
-}
-
-function parsearGenerico(texto) {
-  const txs = []
-  const re = /(\d{2}[\/]\d{2})\s+(.{5,60}?)\s+([\d]+,\d{2})\s*$/gm
-  let m
-  while ((m = re.exec(texto)) !== null) {
-    const valor = parseValor(m[3])
-    if (valor<=0 || valor>50000) continue
-    txs.push({ data:m[1], descricao:limparDesc(m[2]), valor })
-  }
-  return txs
-}
-
-function parsearFatura(texto, nomeArquivo) {
-  const banco = detectarBanco(texto)
-  let txs = []
-  if (banco==='nubank') txs = parsearNubank(texto)
-  else if (banco==='amazon') txs = parsearAmazon(texto)
-  else if (banco==='bb') txs = parsearBB(texto)
-  else if (banco==='c6') txs = parsearC6(texto)
-  else txs = parsearGenerico(texto)
-  return txs.map(tx => ({ ...tx, banco, nomeArquivo:nomeArquivo.replace(/\.[^.]+$/,'') }))
-}
-
-// ─── PROCESSAR ────────────────────────────────────────────────────────────────
-document.getElementById('btn-processar').addEventListener('click', processar)
-
 // ─── IMPORTAR JSON ────────────────────────────────────────────────────────────
 window.importarJSON = async (event) => {
   const file = event.target.files[0]
@@ -766,58 +583,7 @@ async function garantirPessoasSalvas() {
   }
 }
 
-async function processar() {
-  pessoas = pessoas.map((p,i) => ({ ...p, nome: document.getElementById('nome-'+i)?.value.trim() || p.nome }))
-  btnProc.disabled = true
-  document.getElementById('loading-wrap').style.display = 'block'
-  document.getElementById('upload-alert').innerHTML = ''
-  transacoes = []
-  await garantirPessoasSalvas()
 
-  const pendentes = arquivos.filter(a => a.status==='pendente')
-  let autoCount = 0
-
-  for (let i = 0; i < pendentes.length; i++) {
-    const arq = pendentes[i]
-    document.getElementById('load-msg').textContent = `Lendo "${arq.file.name}" (${i+1}/${pendentes.length})...`
-    try {
-      const texto = await extrairTextoPDF(arq.file)
-      const txsParsed = parsearFatura(texto, arq.file.name)
-
-      const { data: faturaData } = await supabase.from('faturas').insert({ nome_arquivo:arq.file.name, mes_referencia:mesAtual() }).select().single()
-      const faturaId = faturaData?.id
-
-      for (const tx of txsParsed) {
-        const chave = tx.descricao?.toLowerCase().trim()
-        const pessoaIdMemoria = classificacoes[chave] || null
-        const auto = !!pessoaIdMemoria
-        if (auto) autoCount++
-        const txObj = { id:uid(), fatura_id:faturaId, fatura_nome:tx.nomeArquivo, descricao:tx.descricao, data_compra:tx.data, valor:tx.valor, pessoa_id:pessoaIdMemoria, auto, banco:tx.banco, parcela:tx.parcela||null, nota:anotacoes_mem[(tx.descricao?.toLowerCase().trim()+'|'+Number(tx.valor).toFixed(2)+'|'+(tx.data||''))]||anotacoes_mem[(tx.descricao?.toLowerCase().trim()+'|'+Number(tx.valor).toFixed(2))]||anotacoes_mem[tx.descricao?.toLowerCase().trim()]||null }
-        transacoes.push(txObj)
-        if (faturaId) await supabase.from('transacoes').insert({ fatura_id:faturaId, descricao:tx.descricao, data_compra:tx.data, valor:tx.valor, pessoa_id:pessoaIdMemoria, classificado_automaticamente:auto })
-      }
-      arq.status = 'ok'
-    } catch(e) {
-      arq.status = 'erro'
-      document.getElementById('upload-alert').innerHTML = `<div class="alert alert-err">⚠ Erro ao ler "${arq.file.name}".</div>`
-    }
-    renderFileList()
-  }
-
-  document.getElementById('loading-wrap').style.display = 'none'
-  btnProc.disabled = false
-
-  if (transacoes.length > 0) {
-    if (autoCount > 0) document.getElementById('upload-alert').innerHTML = `<div class="alert alert-ok">✓ ${transacoes.length} transações encontradas — ${autoCount} já classificadas automaticamente pela memória!</div>`
-    else document.getElementById('upload-alert').innerHTML = `<div class="alert alert-info">✓ ${transacoes.length} transações encontradas. Classifique cada uma abaixo.</div>`
-    renderClassify()
-    document.getElementById('div-class').style.display = 'block'
-    document.getElementById('sec-classify').style.display = 'block'
-    document.getElementById('sec-classify').scrollIntoView({ behavior:'smooth', block:'start' })
-  } else {
-    document.getElementById('upload-alert').innerHTML = `<div class="alert alert-err">Nenhuma transação encontrada. Verifique se o PDF é de um banco suportado.</div>`
-  }
-}
 
 // ─── CLASSIFICAR ──────────────────────────────────────────────────────────────
 // Cada tx pode ter: pessoa_id (1 pessoa) OU divisao: [{pessoa_id, valor}] (dividido)
@@ -851,11 +617,22 @@ function renderClassify() {
   document.getElementById('tab-bar').innerHTML =
     `<button class="tab ${abaAtiva==='todas'?'active':''}" onclick="trocarAba('todas')">Todas</button>` +
     faturas.map(f => `<button class="tab ${abaAtiva===f?'active':''}" onclick="trocarAba('${f}')">${f}</button>`).join('') +
-    (naoClass > 0 ? `<button class="tab ${abaAtiva==='pendentes'?'active':''}" onclick="trocarAba('pendentes')" style="${abaAtiva==='pendentes'?'':'background:#FFF3CD;border-color:#856404;color:#856404;'}"><i class="ti ti-clock"></i> Pendentes (${naoClass})</button>` : '')
+    (naoClass > 0 ? `<button class="tab ${abaAtiva==='pendentes'?'active':''}" onclick="trocarAba('pendentes')" style="${abaAtiva==='pendentes'?'':'background:#FFF3CD;border-color:#856404;color:#856404;'}"><i class="ti ti-clock"></i> Pendentes (${naoClass})</button>` : '') +
+    `<span style="width:1px;height:20px;background:var(--border2);margin:0 2px"></span>` +
+    pessoas.map((p,i) => {
+      const pid = p.id||`local-${i}`
+      const cnt = transacoes.filter(t => t.pessoa_id===pid || (t.divisao && t.divisao.some(d=>d.pessoa_id===pid))).length
+      if (cnt===0 && i>0) return ''
+      return `<button class="tab ${abaAtiva==='p_'+pid?'active':''}" onclick="trocarAba('p_${pid}')" style="font-size:11px;"><span class="dot" style="background:${CORES[i]};width:8px;height:8px"></span>${p.nome} (${cnt})</button>`
+    }).join('')
 
   let filtradas
   if (abaAtiva === 'todas') filtradas = transacoes
   else if (abaAtiva === 'pendentes') filtradas = transacoes.filter(t => !txClassificada(t))
+  else if (abaAtiva.startsWith('p_')) {
+    const pid = abaAtiva.slice(2)
+    filtradas = transacoes.filter(t => t.pessoa_id === pid || (t.divisao && t.divisao.some(d => d.pessoa_id === pid)))
+  }
   else filtradas = transacoes.filter(t => t.fatura_nome === abaAtiva)
   const agrupadas = {}
   filtradas.forEach(tx => { if (!agrupadas[tx.fatura_nome]) agrupadas[tx.fatura_nome]=[]; agrupadas[tx.fatura_nome].push(tx) })
@@ -1088,7 +865,7 @@ function renderResumo() {
             <span class="sl-desc">${tx.descricao}${tx.parcela?` <span style="font-size:10px;opacity:0.6">(${tx.parcela.atual}/${tx.parcela.total})</span>`:''}${tx.dividido?` <span style="font-size:10px;opacity:0.6">(÷${tx.total})</span>`:''}</span>
             <span class="sl-val">R$ ${tx.valor.toFixed(2)}</span>
           </div>`).join('')}
-        ${txs.length>8?`<div class="summary-line" style="color:var(--text3)">+ ${txs.length-8} mais</div>`:''}
+        ${txs.length>8?`<div class="summary-more" data-pid="${pid}" onclick="expandirCard(this, '${pid}')" style="color:var(--primary);cursor:pointer;font-size:12px;padding:4px 0;text-align:center;">+ ${txs.length-8} mais ▾</div>`:''}
         ${txs.length===0?'<div style="font-size:12px;color:var(--text3)">Nenhuma compra</div>':''}
       </div>
     </div>`
@@ -1350,9 +1127,8 @@ function uid() { return Math.random().toString(36).slice(2)+Date.now().toString(
 function mesAtual() { const d=new Date(); return `${d.getMonth()+1}/${d.getFullYear()}` }
 
 function gerarMensagemWhatsApp() {
-  const pix = document.getElementById('chave-pix')?.value.trim()
   const mes = new Date().toLocaleString('pt-BR', { month: 'long', year: 'numeric' })
-  let msg = `💳 *Fechamento do mês — ${mes}*\n\n`
+  let msg = `💳 *Fechamento — ${mes}*\n\n`
   const links = []
 
   pessoas.forEach((p, i) => {
@@ -1369,20 +1145,19 @@ function gerarMensagemWhatsApp() {
     })
     if (txsPessoa.length === 0) return
     const total = txsPessoa.reduce((s,t) => s + t.valor, 0)
-    msg += `*${p.nome}* — R$ ${total.toFixed(2)}\n`
+    msg += `👤 *${p.nome}*\nTotal: *R$ ${total.toFixed(2)}*\n`
     txsPessoa.forEach(tx => {
       const label = tx.nota || tx.descricao
-      msg += `  • ${label}${tx.dividido ? ` (÷${tx.ntotal})` : ''}${tx.parcela ? ` (${tx.parcela.atual}/${tx.parcela.total})` : ''}: R$ ${tx.valor.toFixed(2)}\n`
+      const info = [tx.parcela ? `${tx.parcela.atual}/${tx.parcela.total}` : '', tx.dividido ? `÷${tx.ntotal}` : ''].filter(Boolean).join(' · ')
+      msg += `  ▸ ${label}${info ? ` _(${info})_` : ''} — R$ ${tx.valor.toFixed(2)}\n`
     })
     if (pixCfg.chave) {
-      const codigo = gerarPixCopiaECola(total, `SIGFAT${i}`)
-      msg += `  💳 Pix (copie e cole no app do banco):\n  ${codigo}\n`
-      links.push({ nome: p.nome, total, codigo })
+      links.push({ nome: p.nome, total, codigo: gerarPixCopiaECola(total, `SIGFAT${i}`) })
     }
     msg += '\n'
   })
 
-  if (pixCfg.chave) msg += `🔑 *Chave Pix:* ${pixCfg.chave}`
+  if (pixCfg.chave) msg += `🔑 *Chave Pix:* ${pixCfg.chave}\n_Cole o código Pix no app do seu banco_`
 
   const cont = document.getElementById('pix-links-nova')
   if (cont) {
@@ -1581,6 +1356,85 @@ window.salvarHistorico = async () => {
     finalizar(false)
   }
 }
+
+// ─── MODAL LANÇAMENTO MANUAL (FLUTUANTE) ──────────────────────────────────────
+window.abrirModalManual = () => {
+  const modal = document.getElementById('modal-manual')
+  modal.style.display = 'flex'
+  const sel = document.getElementById('modal-pessoa')
+  sel.innerHTML = pessoas.map(p => `<option value="${p.id||''}">${p.nome}</option>`).join('')
+  document.getElementById('modal-desc').focus()
+}
+window.fecharModalManual = () => { document.getElementById('modal-manual').style.display = 'none' }
+
+window.adicionarManualModal = async () => {
+  const desc = document.getElementById('modal-desc')?.value.trim()
+  const valor = parseFloat(document.getElementById('modal-valor')?.value)
+  const pessoaId = document.getElementById('modal-pessoa')?.value
+  if (!desc || !valor || valor <= 0 || !pessoaId) { document.getElementById('modal-feedback').textContent = '⚠ Preencha todos os campos'; return }
+
+  const parcelado = document.getElementById('modal-parcelado')?.checked
+  const parcAtual = parcelado ? parseInt(document.getElementById('modal-parc-atual')?.value) || 1 : null
+  const parcTotal = parcelado ? parseInt(document.getElementById('modal-parc-total')?.value) || 1 : null
+  const recorrente = parcelado ? document.getElementById('modal-recorrente')?.checked : false
+  const parcela = parcelado ? { atual: parcAtual, total: parcTotal } : null
+
+  const tx = { id: uid(), fatura_id: null, fatura_nome: 'Manual', descricao: desc, data_compra: 'manual', valor, pessoa_id: pessoaId, auto: false, banco: 'manual', parcela, nota: desc }
+  transacoes.push(tx)
+
+  const { data: txDB } = await supabase.from('transacoes').insert({ descricao: desc, data_compra: 'manual', valor, pessoa_id: pessoaId, parcela, nota: desc, classificado_automaticamente: false }).select().single()
+  if (txDB) tx.id = txDB.id
+  await salvarMemoria(tx)
+
+  if (recorrente && parcelado) {
+    await supabase.from('lancamentos_fixos').insert({ descricao: desc, valor, pessoa_id: pessoaId, nota: desc, parcela_atual: parcAtual, parcela_total: parcTotal, mes_inicio: mesAtualRef || mesAtual(), ativo: true })
+  }
+
+  document.getElementById('modal-desc').value = ''
+  document.getElementById('modal-valor').value = ''
+  document.getElementById('modal-parcelado').checked = false
+  document.getElementById('modal-parcelas-wrap').style.display = 'none'
+  document.getElementById('modal-feedback').innerHTML = '<span style="color:#0F6E56">✓ Adicionado!</span>'
+  setTimeout(() => { document.getElementById('modal-feedback').textContent = '' }, 1500)
+  renderClassify(); renderResumo()
+}
+
+// ─── ADICIONAR PESSOA ─────────────────────────────────────────────────────────
+const CORES_EXTRA = ['#6C5CE7','#00B894','#FD79A8','#E17055','#74B9FF','#A29BFE','#55EFC4','#FDCB6E','#E84393','#636E72']
+window.adicionarPessoa = async () => {
+  const i = pessoas.length
+  const cor = CORES_EXTRA[i % CORES_EXTRA.length]
+  const nome = `Pessoa ${i}`
+  const { data } = await supabase.from('pessoas').insert({ nome, cor, posicao: i }).select().single()
+  if (data) {
+    pessoas.push(data)
+    if (!CORES[i]) CORES.push(cor)
+    renderNomes(); renderAssignButtons(); renderResumo()
+  }
+}
+
+// ─── EXPANDIR CARD "+N MAIS" ──────────────────────────────────────────────────
+window.expandirCard = (el, pid) => {
+  const card = el.closest('.summary-card'); if (!card) return
+  const txs = []
+  transacoes.forEach(tx => {
+    if (tx.divisao) {
+      const parte = tx.divisao.find(d => d.pessoa_id === pid)
+      if (parte) txs.push({ descricao: tx.nota || tx.descricao, valor: parte.valor, dividido: true, total: tx.divisao.length, parcela: tx.parcela })
+    } else if (tx.pessoa_id === pid) {
+      txs.push({ descricao: tx.nota || tx.descricao, valor: Number(tx.valor), dividido: false, parcela: tx.parcela })
+    }
+  })
+  const itemsEl = card.querySelector('.summary-items'); if (!itemsEl) return
+  itemsEl.innerHTML = txs.map(tx => `
+    <div class="summary-line">
+      <span class="sl-desc">${tx.descricao}${tx.parcela?` <span style="font-size:10px;opacity:0.6">(${tx.parcela.atual}/${tx.parcela.total})</span>`:''}${tx.dividido?` <span style="font-size:10px;opacity:0.6">(÷${tx.total})</span>`:''}</span>
+      <span class="sl-val">R$ ${tx.valor.toFixed(2)}</span>
+    </div>`).join('')
+}
+
+// Fechar modal ao clicar fora
+document.addEventListener('click', e => { if (e.target.id === 'modal-manual') fecharModalManual() })
 
 init()
 </script>
