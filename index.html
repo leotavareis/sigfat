@@ -75,7 +75,10 @@
     .tab.active { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 500; }
     .tx-group { margin-bottom: 14px; }
     .tx-group-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text3); padding-bottom: 6px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
-    .tx-row { background: var(--surface2); border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 6px; }
+    .tx-row { background: var(--surface); border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 8px; border: 1px solid var(--border); border-left: 4px solid var(--border2); transition: border-color 0.2s; }
+    .tx-row:nth-child(odd) { background: var(--surface2); }
+    .tx-row.classified { border-left-color: #0F6E56; }
+    .tx-row.pending { border-left-color: #E67E22; }
     .tx-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
     .tx-desc { font-size: 13px; font-weight: 500; word-break: break-word; }
     .tx-date { font-size: 12px; color: var(--text3); margin-top: 2px; }
@@ -88,13 +91,15 @@
     .div-mode-btn:hover { background: var(--surface2); }
     .assign-btn:hover { background: var(--surface2); }
     .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .summary-card { background: var(--surface2); border-radius: var(--radius); padding: 1rem; }
+    .summary-card { background: var(--surface); border-radius: var(--radius); padding: 1rem; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,.06); }
     .summary-name { font-size: 12px; color: var(--text2); margin-bottom: 4px; display: flex; align-items: center; gap: 5px; }
     .summary-total { font-size: 24px; font-weight: 600; color: var(--text); }
-    .summary-items { margin-top: 10px; display: flex; flex-direction: column; gap: 3px; }
-    .summary-line { display: flex; justify-content: space-between; font-size: 12px; color: var(--text2); padding: 3px 0; border-bottom: 1px solid var(--border); }
+    .summary-items { margin-top: 10px; display: flex; flex-direction: column; gap: 0; }
+    .summary-line { display: flex; justify-content: space-between; font-size: 12px; color: var(--text2); padding: 5px 6px; border-bottom: 1px solid var(--border); }
+    .summary-line:nth-child(odd) { background: var(--surface2); }
     .summary-line:last-child { border-bottom: none; }
     .summary-line .sl-desc { max-width: 68%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .summary-line .sl-val { font-weight: 500; color: var(--text); white-space: nowrap; }
     .badge-unassigned { font-size: 11px; padding: 2px 8px; background: #FFF3CD; color: #856404; border-radius: 10px; margin-left: 8px; }
     .divider { border: none; border-top: 1px solid var(--border); margin: 1.25rem 0; }
     .action-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
@@ -251,6 +256,20 @@
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px;">
         <select id="manual-pessoa" style="flex:1;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:14px;color:var(--text);background:var(--surface);outline:none;"></select>
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--text2);cursor:pointer;white-space:nowrap;">
+          <input type="checkbox" id="manual-parcelado" onchange="document.getElementById('manual-parcelas-wrap').style.display=this.checked?'flex':'none'" /> Parcelado
+        </label>
+      </div>
+      <div id="manual-parcelas-wrap" style="display:none;gap:8px;align-items:center;margin-top:8px;">
+        <span style="font-size:12px;color:var(--text2);white-space:nowrap;">Parcela</span>
+        <input type="number" id="manual-parc-atual" value="1" min="1" max="99" style="width:52px;padding:6px 8px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:13px;text-align:center;" />
+        <span style="font-size:12px;color:var(--text2);">/</span>
+        <input type="number" id="manual-parc-total" value="12" min="1" max="99" style="width:52px;padding:6px 8px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:13px;text-align:center;" />
+        <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text3);cursor:pointer;white-space:nowrap;">
+          <input type="checkbox" id="manual-recorrente" checked /> Repetir nos próximos meses
+        </label>
+      </div>
+      <div style="margin-top:8px;">
         <button class="btn btn-primary" onclick="adicionarManual()" style="white-space:nowrap"><i class="ti ti-plus"></i> Adicionar</button>
       </div>
     </div>
@@ -426,6 +445,8 @@ async function carregarTransacoesSalvas() {
   })
 
   if (transacoes.length > 0) {
+    // Injetar lançamentos fixos do mês
+    await injetarLancamentosFixos(mesAtualRef)
     const naoClass = transacoes.filter(t => !txClassificada(t)).length
     setSyncStatus(`✓ ${transacoes.length} transações carregadas (${naoClass} pendentes)`)
     setTimeout(() => setSyncStatus(''), 4000)
@@ -713,10 +734,14 @@ window.importarJSON = async (event) => {
       }
     }
 
+    // Injetar lançamentos fixos/parcelados recorrentes
+    const fixosCount = await injetarLancamentosFixos(mesRef)
+
     msg.textContent = `✓ ${transacoes.length} transações importadas!`
     const alertEl = document.getElementById('upload-alert')
     let aviso = `✓ ${transacoes.length} transações importadas`
     if (autoCount > 0) aviso += ` — ${autoCount} já classificadas pela memória`
+    if (fixosCount > 0) aviso += ` · ${fixosCount} parcelas fixas incluídas`
     if (dupCount > 0) aviso += ` · ${dupCount} duplicatas ignoradas`
     alertEl.innerHTML = `<div class="alert ${autoCount>0?'alert-ok':'alert-info'}">${aviso}!</div>`
 
@@ -840,7 +865,7 @@ function renderClassify() {
     const g = document.createElement('div'); g.className = 'tx-group'
     if (abaAtiva==='todas') g.innerHTML = `<div class="tx-group-title"><i class="ti ti-credit-card"></i> ${fatura}</div>`
     txs.forEach(tx => {
-      const row = document.createElement('div'); row.className = 'tx-row'; row.id = 'row-'+tx.id
+      const row = document.createElement('div'); row.className = `tx-row ${txClassificada(tx)?'classified':'pending'}`; row.id = 'row-'+tx.id
 
       // Info de divisão
       let divisaoInfo = ''
@@ -916,6 +941,9 @@ window.togglePessoa = async (txId, pessoaId) => {
   const wrap = document.querySelector(`#row-${tx.id} .assign-btns`)
   if (wrap) wrap.innerHTML = renderBtnsTx(tx)
   renderEditorDivisao(tx)
+  // Atualizar indicador visual da row (verde=classificado, laranja=pendente)
+  const rowEl = document.getElementById(`row-${tx.id}`)
+  if (rowEl) { rowEl.classList.toggle('classified', txClassificada(tx)); rowEl.classList.toggle('pending', !txClassificada(tx)) }
   atualizarBadge(); atualizarBtnResumo(); renderResumo()
 
   await supabase.from('transacoes').update({ pessoa_id: tx.pessoa_id, divisao: tx.divisao || null, classificado_automaticamente: false }).eq('id', tx.id)
@@ -1058,7 +1086,7 @@ function renderResumo() {
         ${txs.slice(0,8).map(tx => `
           <div class="summary-line">
             <span class="sl-desc">${tx.descricao}${tx.parcela?` <span style="font-size:10px;opacity:0.6">(${tx.parcela.atual}/${tx.parcela.total})</span>`:''}${tx.dividido?` <span style="font-size:10px;opacity:0.6">(÷${tx.total})</span>`:''}</span>
-            <span>R$ ${tx.valor.toFixed(2)}</span>
+            <span class="sl-val">R$ ${tx.valor.toFixed(2)}</span>
           </div>`).join('')}
         ${txs.length>8?`<div class="summary-line" style="color:var(--text3)">+ ${txs.length-8} mais</div>`:''}
         ${txs.length===0?'<div style="font-size:12px;color:var(--text3)">Nenhuma compra</div>':''}
@@ -1200,7 +1228,7 @@ async function abrirMes(faturaIds, label, mesRef) {
       <div class="summary-name"><span class="dot" style="background:${CORES[i]}"></span>${p.nome}</div>
       <div class="summary-total">R$ ${total.toFixed(2)}</div>
       <div class="summary-items">
-        ${ptxs.slice(0,8).map(tx=>`<div class="summary-line"><span class="sl-desc">${tx.label}${tx.parcela?` <span style="font-size:10px;opacity:.6">(${tx.parcela.atual}/${tx.parcela.total})</span>`:''}${tx.dividido?` <span style="font-size:10px;opacity:.6">(÷${tx.dividido})</span>`:''}</span><span>R$ ${tx.valor.toFixed(2)}</span></div>`).join('')}
+        ${ptxs.slice(0,8).map(tx=>`<div class="summary-line"><span class="sl-desc">${tx.label}${tx.parcela?` <span style="font-size:10px;opacity:.6">(${tx.parcela.atual}/${tx.parcela.total})</span>`:''}${tx.dividido?` <span style="font-size:10px;opacity:.6">(÷${tx.dividido})</span>`:''}</span><span class="sl-val">R$ ${tx.valor.toFixed(2)}</span></div>`).join('')}
         ${ptxs.length>8?`<div class="summary-line" style="color:var(--text3)">+ ${ptxs.length-8} mais</div>`:''}
         ${ptxs.length===0?'<div style="font-size:12px;color:var(--text3)">Nenhuma compra</div>':''}
       </div>
@@ -1394,16 +1422,99 @@ window.adicionarManual = async () => {
   if (!desc || !valor || valor <= 0 || !pessoaId) {
     alert('Preencha descrição, valor e pessoa.'); return
   }
-  const tx = { id:uid(), fatura_id:null, fatura_nome:'Manual', descricao:desc, data_compra:'manual', valor, pessoa_id:pessoaId, auto:false, banco:'manual' }
+
+  const parcelado = document.getElementById('manual-parcelado')?.checked
+  const parcAtual = parcelado ? parseInt(document.getElementById('manual-parc-atual')?.value) || 1 : null
+  const parcTotal = parcelado ? parseInt(document.getElementById('manual-parc-total')?.value) || 1 : null
+  const recorrente = parcelado ? document.getElementById('manual-recorrente')?.checked : false
+  const parcela = parcelado ? { atual: parcAtual, total: parcTotal } : null
+
+  // Adicionar à lista de transações atuais
+  const tx = {
+    id: uid(), fatura_id: null, fatura_nome: 'Manual', descricao: desc,
+    data_compra: 'manual', valor, pessoa_id: pessoaId, auto: false,
+    banco: 'manual', parcela, nota: desc
+  }
   transacoes.push(tx)
-  await supabase.from('transacoes').insert({ descricao:desc, data_compra:'manual', valor, pessoa_id:pessoaId, classificado_automaticamente:false })
+
+  // Salvar no banco
+  const { data: txDB } = await supabase.from('transacoes').insert({
+    descricao: desc, data_compra: 'manual', valor, pessoa_id: pessoaId,
+    parcela, nota: desc, classificado_automaticamente: false
+  }).select().single()
+  if (txDB) tx.id = txDB.id
+
+  // Salvar na memória para futuras importações
+  await salvarMemoria(tx)
+
+  // Se parcelado recorrente, salvar em lancamentos_fixos
+  if (recorrente && parcelado) {
+    await supabase.from('lancamentos_fixos').insert({
+      descricao: desc, valor, pessoa_id: pessoaId,
+      nota: desc, parcela_atual: parcAtual, parcela_total: parcTotal,
+      mes_inicio: mesAtualRef || mesAtual(), ativo: true
+    })
+  }
+
+  // Limpar formulário
   document.getElementById('manual-desc').value = ''
   document.getElementById('manual-valor').value = ''
+  document.getElementById('manual-parcelado').checked = false
+  document.getElementById('manual-parcelas-wrap').style.display = 'none'
   renderResumo()
-  // feedback visual
+
   const btn = document.querySelector('[onclick="adicionarManual()"]')
   const orig = btn.innerHTML; btn.innerHTML = '<i class="ti ti-check"></i> Adicionado!'
   setTimeout(() => btn.innerHTML = orig, 1500)
+}
+
+// Injeta lançamentos fixos/parcelados no mês atual ao importar
+async function injetarLancamentosFixos(mesRef) {
+  const { data: fixos } = await supabase.from('lancamentos_fixos').select('*').eq('ativo', true)
+  if (!fixos || fixos.length === 0) return 0
+
+  let count = 0
+  for (const fix of fixos) {
+    // Calcular qual parcela seria neste mês
+    const [mI, aI] = fix.mes_inicio.split('/').map(Number)
+    const [mR, aR] = mesRef.split('/').map(Number)
+    const mesesPassados = (aR - aI) * 12 + (mR - mI)
+    const parcAtual = fix.parcela_atual + mesesPassados
+
+    // Se já passou de todas as parcelas, desativar
+    if (parcAtual > fix.parcela_total) {
+      await supabase.from('lancamentos_fixos').update({ ativo: false }).eq('id', fix.id)
+      continue
+    }
+
+    // Verificar se já existe essa transação neste mês (evitar duplicata)
+    const chave = chaveTx({
+      descricao: fix.descricao, valor: fix.valor, data_compra: 'manual',
+      parcela: { atual: parcAtual, total: fix.parcela_total }
+    })
+    const jaExiste = transacoes.find(t => chaveTx(t) === chave)
+    if (jaExiste) continue
+
+    const parcela = { atual: parcAtual, total: fix.parcela_total }
+    const tx = {
+      id: uid(), fatura_id: null, fatura_nome: 'Manual', descricao: fix.descricao,
+      data_compra: 'manual', valor: Number(fix.valor), pessoa_id: fix.pessoa_id,
+      divisao: fix.divisao, nota: fix.nota || fix.descricao,
+      auto: true, banco: 'manual', parcela
+    }
+
+    const { data: txDB } = await supabase.from('transacoes').insert({
+      descricao: fix.descricao, data_compra: 'manual', valor: fix.valor,
+      pessoa_id: fix.pessoa_id, divisao: fix.divisao,
+      nota: fix.nota || fix.descricao, parcela,
+      classificado_automaticamente: true
+    }).select().single()
+    if (txDB) tx.id = txDB.id
+
+    transacoes.push(tx)
+    count++
+  }
+  return count
 }
 
 // ─── WHATSAPP + PIX ───────────────────────────────────────────────────────────
