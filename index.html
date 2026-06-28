@@ -520,8 +520,7 @@ window.importarJSON = async (event) => {
       await supabase.from('faturas').delete().in('id', ids)
     }
 
-    const chavesVistas = new Set()  // dedup dentro do próprio arquivo
-    let autoCount = 0, dupCount = 0
+    let autoCount = 0
 
     for (const fatura of data.faturas) {
       const { data: faturaData } = await supabase
@@ -541,10 +540,6 @@ window.importarJSON = async (event) => {
           parcela: tx.parcela || null,
           nota: tx.nota || null
         }
-        const chave = chaveTx(base)
-        // Dedup: se já vimos essa chave neste arquivo, pula (evita duplicata)
-        if (chavesVistas.has(chave)) { dupCount++; continue }
-        chavesVistas.add(chave)
 
         // Aplica memória conhecida (pessoa + divisão + nota)
         const txObj = aplicarMemoria({ ...base, id: uid() })
@@ -576,7 +571,6 @@ window.importarJSON = async (event) => {
     let aviso = `✓ ${transacoes.length} transações importadas`
     if (autoCount > 0) aviso += ` — ${autoCount} já classificadas pela memória`
     if (fixosCount > 0) aviso += ` · ${fixosCount} parcelas fixas incluídas`
-    if (dupCount > 0) aviso += ` · ${dupCount} duplicatas ignoradas`
     alertEl.innerHTML = `<div class="alert ${autoCount>0?'alert-ok':'alert-info'}">${aviso}!</div>`
 
     renderClassify()
