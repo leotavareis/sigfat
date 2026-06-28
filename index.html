@@ -1283,11 +1283,12 @@ async function injetarLancamentosFixos(mesRef) {
     }
 
     // Verificar se já existe essa transação neste mês (evitar duplicata)
-    const chave = chaveTx({
-      descricao: fix.descricao, valor: fix.valor, data_compra: 'manual',
-      parcela: { atual: parcAtual, total: fix.parcela_total }
-    })
-    const jaExiste = transacoes.find(t => chaveTx(t) === chave)
+    // Compara por descrição + parcela atual — ignora data que muda a cada mês
+    const descNorm = fix.descricao.toLowerCase().trim()
+    const jaExiste = transacoes.find(t =>
+      t.descricao.toLowerCase().trim() === descNorm &&
+      (fix.parcela_total ? t.parcela?.atual === parcAtual : true)
+    )
     if (jaExiste) continue
 
     const parcela = { atual: parcAtual, total: fix.parcela_total }
