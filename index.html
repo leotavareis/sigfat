@@ -348,10 +348,12 @@ let pessoas = [], classificacoes = {}, anotacoes_mem = {}, transacoes = [], arqu
 let memoria = {}  // chave canônica -> { pessoa_id, divisao, nota }
 let pixCfg = { tipo:'telefone', chave:'', nome:'', cidade:'' }
 
-// Chave para MEMÓRIA: só descrição normalizada — permite reusar entre meses
-// "ASAAS *life academia" do mês passado bate com o deste mês
+// Chave para MEMÓRIA: descrição + valor — permite reusar entre meses
+// sem confundir compras diferentes do mesmo estabelecimento (ex: CARAJAS CONST R$219 ≠ R$200)
 function chaveMemoria(tx) {
-  return (tx.descricao || '').toLowerCase().trim()
+  const desc = (tx.descricao || '').toLowerCase().trim()
+  const valor = Number(tx.valor || 0).toFixed(2)
+  return `${desc}|${valor}`
 }
 
 // Chave completa: usada APENAS para dedup dentro do mesmo import
@@ -396,7 +398,20 @@ async function salvarMemoria(tx) {
 function aplicarMemoria(tx) {
   const m = memoria[chaveMemoria(tx)]
   if (!m) return { ...tx, pessoa_id:null, divisao:null, nota:tx.nota||null, auto:false }
-  return { ...tx, pessoa_id:m.pessoa_id||null, divisao:m.divisao||null, nota:m.nota||tx.nota||null, auto:!!(m.pessoa_id||m.divisao) }
+
+  // Reutiliza QUEM divide, mas recalcula os valores para o valor atual da transação
+  let divisao = m.divisao || null
+  if (divisao && divisao.length > 1) {
+    const vp = Number(tx.valor) / divisao.length
+    divisao = divisao.map((d, i) => ({
+      pessoa_id: d.pessoa_id,
+      valor: i === divisao.length - 1
+        ? Number((Number(tx.valor) - vp * (divisao.length - 1)).toFixed(2))
+        : Number(vp.toFixed(2))
+    }))
+  }
+
+  return { ...tx, pessoa_id:m.pessoa_id||null, divisao, nota:m.nota||tx.nota||null, auto:!!(m.pessoa_id||m.divisao) }
 }
 function setSyncStatus(m) { document.getElementById('sync-status').textContent = m }
 
