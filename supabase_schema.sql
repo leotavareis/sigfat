@@ -96,3 +96,71 @@ CREATE TABLE IF NOT EXISTS memoria_transacao (
 ALTER TABLE memoria_transacao ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "acesso_publico_memoria" ON memoria_transacao FOR ALL USING (true) WITH CHECK (true);
 CREATE INDEX IF NOT EXISTS idx_memoria_chave ON memoria_transacao(chave);
+
+-- ════════════════════════════════════════════════════════════════════════════
+-- MÓDULO FINANÇAS (receitas e despesas) — independente do fluxo de faturas
+-- ════════════════════════════════════════════════════════════════════════════
+
+-- Categorias de receita/despesa (com relatório por categoria)
+CREATE TABLE IF NOT EXISTS fin_categorias (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  nome TEXT NOT NULL,
+  tipo TEXT NOT NULL,           -- 'receita' | 'despesa'
+  cor TEXT,
+  icone TEXT,                   -- nome do ícone Tabler (ex: 'shopping-cart')
+  posicao INTEGER DEFAULT 0,
+  criado_em TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE fin_categorias ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "acesso_publico_fin_categorias" ON fin_categorias FOR ALL USING (true) WITH CHECK (true);
+
+-- Cartões (para agrupar a fatura projetada por cartão)
+CREATE TABLE IF NOT EXISTS fin_cartoes (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  nome TEXT NOT NULL,
+  dia_fechamento INTEGER,
+  dia_vencimento INTEGER,
+  cor TEXT,
+  criado_em TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE fin_cartoes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "acesso_publico_fin_cartoes" ON fin_cartoes FOR ALL USING (true) WITH CHECK (true);
+
+-- Livro-caixa do módulo: receitas e despesas
+CREATE TABLE IF NOT EXISTS fin_lancamentos (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  tipo TEXT NOT NULL,                 -- 'receita' | 'despesa'
+  descricao TEXT NOT NULL,
+  valor NUMERIC(10,2) NOT NULL,
+  data DATE NOT NULL,                 -- competência (mês a que pertence)
+  categoria_id UUID REFERENCES fin_categorias(id) ON DELETE SET NULL,
+  forma TEXT,                         -- 'dinheiro'|'debito'|'credito'|'pix'
+  cartao_id UUID REFERENCES fin_cartoes(id) ON DELETE SET NULL,
+  pessoa_id UUID REFERENCES pessoas(id) ON DELETE SET NULL,
+  divisao JSONB,                      -- [{pessoa_id, valor}] — mesmo formato do módulo de faturas
+  parcela JSONB,                      -- { atual, total } quando parcelado
+  grupo_id UUID,                      -- liga todas as parcelas/repetições de um mesmo lançamento
+  fixa BOOLEAN DEFAULT FALSE,         -- despesa fixa/recorrente
+  nota TEXT,
+  criado_em TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE fin_lancamentos ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "acesso_publico_fin_lancamentos" ON fin_lancamentos FOR ALL USING (true) WITH CHECK (true);
+CREATE INDEX IF NOT EXISTS idx_fin_lanc_data ON fin_lancamentos(data);
+CREATE INDEX IF NOT EXISTS idx_fin_lanc_grupo ON fin_lancamentos(grupo_id);
+
+-- Categorias padrão
+INSERT INTO fin_categorias (nome, tipo, cor, icone, posicao) VALUES
+  ('Alimentação', 'despesa', '#C0392B', 'tools-kitchen-2', 0),
+  ('Moradia',     'despesa', '#8E44AD', 'home',            1),
+  ('Transporte',  'despesa', '#2980B9', 'car',             2),
+  ('Saúde',       'despesa', '#16A085', 'heart',           3),
+  ('Lazer',       'despesa', '#E67E22', 'movie',           4),
+  ('Educação',    'despesa', '#2C3E50', 'school',          5),
+  ('Assinaturas', 'despesa', '#7F8C8D', 'repeat',          6),
+  ('Compras',     'despesa', '#D35400', 'shopping-cart',   7),
+  ('Outros',      'despesa', '#95A5A6', 'dots',            8),
+  ('Salário',     'receita', '#27AE60', 'cash',            0),
+  ('Freela',      'receita', '#1ABC9C', 'briefcase',       1),
+  ('Outros',      'receita', '#95A5A6', 'dots',            2)
+ON CONFLICT DO NOTHING;

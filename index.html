@@ -126,6 +126,7 @@
   <div style="display:flex;align-items:center;gap:14px">
     <div class="header-nav">
       <button class="header-nav-btn active" id="hnav-nova" onclick="trocarView('nova')"><i class="ti ti-home"></i> Início</button>
+      <button class="header-nav-btn" id="hnav-fin" onclick="trocarView('financas')"><i class="ti ti-wallet"></i> Finanças</button>
       <button class="header-nav-btn" id="hnav-hist" onclick="trocarView('historico')"><i class="ti ti-history"></i> Histórico</button>
     </div>
     <div id="sync-status" style="font-size:12px;color:var(--text3)"></div>
@@ -135,6 +136,7 @@
 <!-- Barra de navegação flutuante (fixa) -->
 <div class="floating-nav">
   <button class="fnav-btn active" id="fnav-nova" onclick="trocarView('nova')"><i class="ti ti-home"></i><span>Início</span></button>
+  <button class="fnav-btn" id="fnav-fin" onclick="trocarView('financas')"><i class="ti ti-wallet"></i><span>Finanças</span></button>
   <button class="fnav-btn" id="fnav-hist" onclick="trocarView('historico')"><i class="ti ti-history"></i><span>Histórico</span></button>
   <button class="fnav-btn" onclick="abrirModalManual()"><i class="ti ti-plus"></i><span>Adicionar</span></button>
   <button class="fnav-btn" onclick="window.scrollTo({top:0,behavior:'smooth'})"><i class="ti ti-arrow-up"></i><span>Topo</span></button>
@@ -358,6 +360,116 @@
       </div>
     </div>
   </div><!-- /view-historico -->
+
+  <!-- VIEW: FINANÇAS -->
+  <style>
+    .fin-tipo-toggle { display:flex; gap:8px; margin-bottom:12px; }
+    .fin-tipo-btn { flex:1; padding:10px; border:1px solid var(--border2); background:var(--surface); color:var(--text2); border-radius:var(--radius-sm); font-size:14px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:6px; }
+    .fin-tipo-btn.active.despesa { background:#C0392B; color:#fff; border-color:#C0392B; }
+    .fin-tipo-btn.active.receita { background:#27AE60; color:#fff; border-color:#27AE60; }
+    .fin-grid { display:flex; gap:8px; flex-wrap:wrap; }
+    .fin-grid > * { flex:1; min-width:130px; }
+    #view-financas input, #view-financas select { padding:9px 12px; border:1px solid var(--border2); border-radius:var(--radius-sm); font-size:14px; color:var(--text); background:var(--surface); box-sizing:border-box; width:100%; outline:none; }
+    .fin-forma-row { display:flex; align-items:center; gap:8px; }
+    .fin-forma-row label { font-size:13px; color:var(--text2); white-space:nowrap; }
+    .fin-check { display:flex; align-items:center; gap:6px; font-size:13px; color:var(--text2); cursor:pointer; }
+    .fin-check input { width:auto!important; }
+    .fin-totais { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+    .fin-tot-card { padding:12px; border-radius:var(--radius-sm); border:1px solid var(--border2); text-align:center; }
+    .fin-tot-card .lbl { font-size:11px; color:var(--text3); text-transform:uppercase; letter-spacing:.5px; }
+    .fin-tot-card .val { font-size:18px; font-weight:700; margin-top:2px; }
+    .fin-lanc-row { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); }
+    .fin-cat-bar { height:8px; border-radius:4px; }
+    .fin-sec-title { font-size:13px; font-weight:600; color:var(--text); margin-bottom:8px; }
+  </style>
+  <div id="view-financas" class="view">
+
+    <!-- Lançamento rápido -->
+    <div class="card">
+      <div class="step-header">
+        <div class="step-num active"><i class="ti ti-plus" style="font-size:12px"></i></div>
+        <div><div class="step-title">Novo lançamento</div><div class="step-sub">Registre receitas e despesas no momento em que acontecem</div></div>
+      </div>
+
+      <div class="fin-tipo-toggle">
+        <button id="fin-tipo-despesa" class="fin-tipo-btn active despesa" onclick="finSetTipo('despesa')"><i class="ti ti-arrow-down-left"></i> Despesa</button>
+        <button id="fin-tipo-receita" class="fin-tipo-btn receita" onclick="finSetTipo('receita')"><i class="ti ti-arrow-up-right"></i> Receita</button>
+      </div>
+
+      <div class="fin-grid">
+        <input type="text" id="fin-desc" placeholder="Descrição (ex: Mercado, Salário...)" style="flex:2" />
+        <input type="number" id="fin-valor" placeholder="0.00" step="0.01" min="0" />
+      </div>
+      <div class="fin-grid" style="margin-top:8px">
+        <select id="fin-categoria"></select>
+        <input type="date" id="fin-data" />
+      </div>
+
+      <!-- Forma de pagamento (despesa) -->
+      <div id="fin-forma-wrap" style="margin-top:8px">
+        <div class="fin-forma-row">
+          <label>Forma:</label>
+          <select id="fin-forma" onchange="finOnFormaChange()">
+            <option value="dinheiro">Dinheiro</option>
+            <option value="debito">Débito</option>
+            <option value="credito">Crédito</option>
+            <option value="pix">Pix</option>
+          </select>
+        </div>
+        <div id="fin-credito-wrap" style="display:none;margin-top:8px">
+          <div class="fin-forma-row">
+            <select id="fin-cartao" style="flex:1"></select>
+            <button class="btn" onclick="finNovoCartao()" style="border:1px dashed var(--border2);color:var(--text2);font-size:12px;white-space:nowrap"><i class="ti ti-plus"></i> Cartão</button>
+          </div>
+          <label class="fin-check" style="margin-top:8px"><input type="checkbox" id="fin-parcelado" onchange="finToggleParcelado()" /> Parcelado</label>
+          <div id="fin-parc-wrap" style="display:none;align-items:center;gap:8px;margin-top:6px">
+            <span style="font-size:12px;color:var(--text2)">Nº de parcelas</span>
+            <input type="number" id="fin-parc-total" value="2" min="2" max="99" style="width:64px;text-align:center" />
+            <span style="font-size:11px;color:var(--text3)">(divide o valor total)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Despesa fixa -->
+      <div id="fin-fixa-wrap" style="margin-top:8px">
+        <label class="fin-check"><input type="checkbox" id="fin-fixa" onchange="finToggleFixa()" /> Despesa fixa (repete todo mês)</label>
+        <div id="fin-fixa-meses-wrap" style="display:none;align-items:center;gap:8px;margin-top:6px">
+          <span style="font-size:12px;color:var(--text2)">Repetir por</span>
+          <input type="number" id="fin-fixa-meses" value="12" min="1" max="60" style="width:64px;text-align:center" />
+          <span style="font-size:12px;color:var(--text2)">meses</span>
+        </div>
+      </div>
+
+      <!-- Pessoa + divisão -->
+      <div class="fin-grid" style="margin-top:8px">
+        <select id="fin-pessoa"></select>
+        <button class="btn" id="fin-btn-dividir" onclick="finToggleDivisao()" style="flex:0 0 auto;border:1px solid var(--border2);color:var(--text2)"><i class="ti ti-users"></i> Dividir</button>
+      </div>
+      <div id="fin-divisao-wrap" style="display:none;margin-top:8px;padding:10px;background:var(--surface2);border-radius:8px;border:1px solid var(--border2)"></div>
+
+      <div style="margin-top:12px;display:flex;align-items:center;gap:10px">
+        <button class="btn btn-primary" onclick="finAddLancamento()"><i class="ti ti-plus"></i> Adicionar</button>
+        <span id="fin-feedback" style="font-size:12px"></span>
+      </div>
+    </div>
+
+    <!-- Painel do mês -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+        <div class="step-title">Resumo do mês</div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <button class="btn" onclick="finMudarMes(-1)" style="padding:6px 10px;border:1px solid var(--border2)"><i class="ti ti-chevron-left"></i></button>
+          <span id="fin-mes-label" style="font-weight:600;min-width:110px;text-align:center;font-size:14px"></span>
+          <button class="btn" onclick="finMudarMes(1)" style="padding:6px 10px;border:1px solid var(--border2)"><i class="ti ti-chevron-right"></i></button>
+        </div>
+      </div>
+      <div class="fin-totais" id="fin-totais"></div>
+      <div id="fin-cartoes-box" style="margin-top:16px"></div>
+      <div id="fin-categorias-box" style="margin-top:16px"></div>
+      <div id="fin-lista" style="margin-top:16px"></div>
+    </div>
+
+  </div><!-- /view-financas -->
 
 </div>
 
@@ -1046,13 +1158,17 @@ function renderResumo() {
 window.trocarView = (v) => {
   document.getElementById('view-nova').classList.toggle('active', v==='nova')
   document.getElementById('view-historico').classList.toggle('active', v==='historico')
+  document.getElementById('view-financas').classList.toggle('active', v==='financas')
   // Sincronizar estados ativos de todas as barras
   document.getElementById('hnav-nova')?.classList.toggle('active', v==='nova')
+  document.getElementById('hnav-fin')?.classList.toggle('active', v==='financas')
   document.getElementById('hnav-hist')?.classList.toggle('active', v==='historico')
   document.getElementById('fnav-nova')?.classList.toggle('active', v==='nova')
+  document.getElementById('fnav-fin')?.classList.toggle('active', v==='financas')
   document.getElementById('fnav-hist')?.classList.toggle('active', v==='historico')
   document.querySelectorAll('.nav-tab').forEach((t,i) => t.classList.toggle('active', (i===0&&v==='nova')||(i===1&&v==='historico')))
   if (v==='historico') carregarHistorico()
+  if (v==='financas') finAbrir()
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
@@ -1645,6 +1761,284 @@ window.excluirTransacao = async (txId) => {
 
 // Fechar modal ao clicar fora
 document.addEventListener('click', e => { if (e.target.id === 'modal-manual') fecharModalManual() })
+
+// ════════════════════════════════════════════════════════════════════════════
+// MÓDULO FINANÇAS — receitas e despesas (independente do fluxo de faturas)
+// ════════════════════════════════════════════════════════════════════════════
+let finCategorias = [], finCartoes = [], finLancamentos = []
+let finTipo = 'despesa', finDivisaoPids = [], finCarregado = false
+const _hojeFin = new Date()
+let finAno = _hojeFin.getFullYear(), finMes = _hojeFin.getMonth() + 1
+const FIN_MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+const fmtBR = n => Number(n||0).toLocaleString('pt-BR', { minimumFractionDigits:2, maximumFractionDigits:2 })
+
+async function finAbrir() {
+  if (!finCarregado) {
+    await finCarregarCategorias()
+    await finCarregarCartoes()
+    finCarregado = true
+    finPopularSelects()
+    const di = document.getElementById('fin-data')
+    if (di && !di.value) di.value = new Date().toISOString().slice(0,10)
+  }
+  await finCarregarLancamentos()
+  finRenderMes()
+}
+
+async function finCarregarCategorias() {
+  const { data } = await supabase.from('fin_categorias').select('*').order('posicao')
+  finCategorias = data || []
+}
+async function finCarregarCartoes() {
+  const { data } = await supabase.from('fin_cartoes').select('*').order('nome')
+  finCartoes = data || []
+}
+async function finCarregarLancamentos() {
+  const { data } = await supabase.from('fin_lancamentos').select('*').order('data', { ascending:false })
+  finLancamentos = data || []
+}
+
+function finPopularSelects() {
+  finPopularCategorias()
+  document.getElementById('fin-pessoa').innerHTML = pessoas.map(p => `<option value="${p.id||''}">${p.nome}</option>`).join('')
+  finPopularCartoes()
+}
+function finPopularCategorias() {
+  const sel = document.getElementById('fin-categoria')
+  const cats = finCategorias.filter(c => c.tipo === finTipo)
+  sel.innerHTML = cats.map(c => `<option value="${c.id}">${c.nome}</option>`).join('')
+}
+function finPopularCartoes() {
+  const sel = document.getElementById('fin-cartao')
+  if (!sel) return
+  sel.innerHTML = finCartoes.length
+    ? finCartoes.map(c => `<option value="${c.id}">${c.nome}</option>`).join('')
+    : '<option value="">— nenhum cartão —</option>'
+}
+
+window.finSetTipo = (t) => {
+  finTipo = t
+  document.getElementById('fin-tipo-despesa').classList.toggle('active', t==='despesa')
+  document.getElementById('fin-tipo-receita').classList.toggle('active', t==='receita')
+  // Receita não tem forma de pagamento / cartão / fixa
+  document.getElementById('fin-forma-wrap').style.display = t==='despesa' ? 'block' : 'none'
+  document.getElementById('fin-fixa-wrap').style.display  = t==='despesa' ? 'block' : 'none'
+  finPopularCategorias()
+}
+window.finOnFormaChange = () => {
+  const credito = document.getElementById('fin-forma').value === 'credito'
+  document.getElementById('fin-credito-wrap').style.display = credito ? 'block' : 'none'
+}
+window.finToggleParcelado = () => {
+  document.getElementById('fin-parc-wrap').style.display = document.getElementById('fin-parcelado').checked ? 'flex' : 'none'
+}
+window.finToggleFixa = () => {
+  document.getElementById('fin-fixa-meses-wrap').style.display = document.getElementById('fin-fixa').checked ? 'flex' : 'none'
+}
+window.finNovoCartao = async () => {
+  const nome = prompt('Nome do cartão (ex: Nubank, C6):')
+  if (!nome || !nome.trim()) return
+  const { data } = await supabase.from('fin_cartoes').insert({ nome: nome.trim() }).select().single()
+  if (data) { finCartoes.push(data); finPopularCartoes(); document.getElementById('fin-cartao').value = data.id }
+}
+
+window.finToggleDivisao = () => {
+  const wrap = document.getElementById('fin-divisao-wrap')
+  const abrir = wrap.style.display === 'none'
+  wrap.style.display = abrir ? 'block' : 'none'
+  if (abrir) {
+    wrap.innerHTML = `<div style="font-size:11px;color:var(--text3);margin-bottom:8px">Marque quem divide — o valor é rateado igualmente</div>` +
+      pessoas.map((p,i) => {
+        const pid = p.id || `local-${i}`
+        return `<label class="fin-check" style="margin-bottom:4px"><input type="checkbox" value="${pid}" onchange="finOnDivisaoChange()" ${finDivisaoPids.includes(pid)?'checked':''}/> ${p.nome}</label>`
+      }).join('')
+  }
+}
+window.finOnDivisaoChange = () => {
+  finDivisaoPids = [...document.querySelectorAll('#fin-divisao-wrap input:checked')].map(i => i.value)
+}
+
+// Soma k meses a uma data YYYY-MM-DD (mantém o dia, com clamp no fim do mês)
+function finAddMeses(dataStr, k) {
+  const [y,m,d] = dataStr.split('-').map(Number)
+  const dt = new Date(y, (m-1)+k, 1)
+  const ultimoDia = new Date(dt.getFullYear(), dt.getMonth()+1, 0).getDate()
+  dt.setDate(Math.min(d, ultimoDia))
+  return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`
+}
+
+window.finAddLancamento = async () => {
+  const fb = document.getElementById('fin-feedback')
+  const desc = document.getElementById('fin-desc').value.trim()
+  const valor = parseFloat(document.getElementById('fin-valor').value)
+  const dataBase = document.getElementById('fin-data').value
+  const categoria_id = document.getElementById('fin-categoria').value || null
+  const pessoa_id_raw = document.getElementById('fin-pessoa').value
+  const pessoa_id = pessoa_id_raw && !pessoa_id_raw.startsWith('local-') ? pessoa_id_raw : null
+  if (!desc || !valor || valor <= 0 || !dataBase) { fb.innerHTML = '<span style="color:#C0392B">⚠ Preencha descrição, valor e data</span>'; return }
+
+  const ehDespesa = finTipo === 'despesa'
+  const forma = ehDespesa ? document.getElementById('fin-forma').value : null
+  const credito = ehDespesa && forma === 'credito'
+  const cartao_id = credito ? (document.getElementById('fin-cartao').value || null) : null
+  const parcelado = credito && document.getElementById('fin-parcelado').checked
+  const parcTotal = parcelado ? Math.max(2, parseInt(document.getElementById('fin-parc-total').value) || 2) : null
+  const fixa = ehDespesa && document.getElementById('fin-fixa').checked
+  const fixaMeses = fixa ? Math.max(1, parseInt(document.getElementById('fin-fixa-meses').value) || 1) : 1
+
+  // Divisão (rateio igualitário entre os marcados)
+  const pidsDiv = finDivisaoPids.filter(p => !p.startsWith('local-'))
+  const fazerDivisao = ehDespesa && pidsDiv.length >= 2
+  const montarDivisao = (v) => {
+    const vp = v / pidsDiv.length
+    return pidsDiv.map((pid,i) => ({ pessoa_id: pid, valor: i === pidsDiv.length-1 ? Number((v - vp*(pidsDiv.length-1)).toFixed(2)) : Number(vp.toFixed(2)) }))
+  }
+
+  const grupo_id = (parcelado || fixa) ? crypto.randomUUID() : null
+  const linhas = []
+
+  if (parcelado) {
+    // valor digitado = total; divide igualmente entre as parcelas
+    const vp = valor / parcTotal
+    for (let k = 1; k <= parcTotal; k++) {
+      const v = k === parcTotal ? Number((valor - vp*(parcTotal-1)).toFixed(2)) : Number(vp.toFixed(2))
+      linhas.push({ tipo:'despesa', descricao:desc, valor:v, data:finAddMeses(dataBase, k-1), categoria_id, forma, cartao_id, pessoa_id: fazerDivisao?null:pessoa_id, divisao: fazerDivisao?montarDivisao(v):null, parcela:{ atual:k, total:parcTotal }, grupo_id, fixa:false, nota:desc })
+    }
+  } else if (fixa) {
+    for (let k = 0; k < fixaMeses; k++) {
+      linhas.push({ tipo:'despesa', descricao:desc, valor, data:finAddMeses(dataBase, k), categoria_id, forma, cartao_id, pessoa_id: fazerDivisao?null:pessoa_id, divisao: fazerDivisao?montarDivisao(valor):null, parcela:null, grupo_id, fixa:true, nota:desc })
+    }
+  } else {
+    linhas.push({ tipo:finTipo, descricao:desc, valor, data:dataBase, categoria_id, forma, cartao_id, pessoa_id: fazerDivisao?null:pessoa_id, divisao: fazerDivisao?montarDivisao(valor):null, parcela:null, grupo_id:null, fixa:false, nota:desc })
+  }
+
+  fb.innerHTML = '<span style="color:var(--text3)">Salvando...</span>'
+  const { error } = await supabase.from('fin_lancamentos').insert(linhas)
+  if (error) { console.error('Erro fin_lancamentos:', error); fb.innerHTML = '<span style="color:#C0392B">⚠ Erro ao salvar</span>'; return }
+
+  // Limpar form
+  document.getElementById('fin-desc').value = ''
+  document.getElementById('fin-valor').value = ''
+  document.getElementById('fin-parcelado').checked = false
+  document.getElementById('fin-parc-wrap').style.display = 'none'
+  document.getElementById('fin-fixa').checked = false
+  document.getElementById('fin-fixa-meses-wrap').style.display = 'none'
+  finDivisaoPids = []
+  document.getElementById('fin-divisao-wrap').style.display = 'none'
+  fb.innerHTML = `<span style="color:#0F6E56">✓ ${linhas.length>1?linhas.length+' lançamentos adicionados':'Adicionado'}!</span>`
+  setTimeout(() => { fb.textContent = '' }, 2000)
+
+  await finCarregarLancamentos()
+  finRenderMes()
+}
+
+window.finMudarMes = (delta) => {
+  finMes += delta
+  if (finMes < 1) { finMes = 12; finAno-- }
+  if (finMes > 12) { finMes = 1; finAno++ }
+  finRenderMes()
+}
+
+function finDoMes() {
+  const prefixo = `${finAno}-${String(finMes).padStart(2,'0')}`
+  return finLancamentos.filter(l => (l.data || '').startsWith(prefixo))
+}
+
+function finRenderMes() {
+  document.getElementById('fin-mes-label').textContent = `${FIN_MESES[finMes-1]} ${finAno}`
+  const lancs = finDoMes()
+  const receitas = lancs.filter(l => l.tipo==='receita').reduce((s,l) => s + Number(l.valor), 0)
+  const despesas = lancs.filter(l => l.tipo==='despesa').reduce((s,l) => s + Number(l.valor), 0)
+  const resultado = receitas - despesas
+
+  document.getElementById('fin-totais').innerHTML = `
+    <div class="fin-tot-card" style="background:#E1F5EE"><div class="lbl">Receitas</div><div class="val" style="color:#27AE60">R$ ${fmtBR(receitas)}</div></div>
+    <div class="fin-tot-card" style="background:#FBEAF0"><div class="lbl">Despesas</div><div class="val" style="color:#C0392B">R$ ${fmtBR(despesas)}</div></div>
+    <div class="fin-tot-card" style="background:${resultado>=0?'#E6F1FB':'#FAECE7'}"><div class="lbl">Resultado</div><div class="val" style="color:${resultado>=0?'#185FA5':'#C0392B'}">R$ ${fmtBR(resultado)}</div></div>`
+
+  // Fatura projetada por cartão
+  const porCartao = {}
+  lancs.filter(l => l.tipo==='despesa' && l.forma==='credito').forEach(l => {
+    const k = l.cartao_id || 'sem'
+    porCartao[k] = (porCartao[k] || 0) + Number(l.valor)
+  })
+  const cartChaves = Object.keys(porCartao)
+  document.getElementById('fin-cartoes-box').innerHTML = cartChaves.length ? `
+    <div class="fin-sec-title"><i class="ti ti-credit-card"></i> Fatura projetada por cartão</div>
+    ${cartChaves.map(k => {
+      const c = finCartoes.find(x => x.id === k)
+      return `<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid var(--border)"><span>${c?c.nome:'Sem cartão'}</span><span style="font-weight:600">R$ ${fmtBR(porCartao[k])}</span></div>`
+    }).join('')}` : ''
+
+  // Por categoria (despesas)
+  const porCat = {}
+  lancs.filter(l => l.tipo==='despesa').forEach(l => {
+    const k = l.categoria_id || 'sem'
+    porCat[k] = (porCat[k] || 0) + Number(l.valor)
+  })
+  const catChaves = Object.keys(porCat).sort((a,b) => porCat[b]-porCat[a])
+  document.getElementById('fin-categorias-box').innerHTML = catChaves.length ? `
+    <div class="fin-sec-title"><i class="ti ti-chart-pie"></i> Despesas por categoria</div>
+    ${catChaves.map(k => {
+      const c = finCategorias.find(x => x.id === k)
+      const pct = despesas>0 ? (porCat[k]/despesas*100) : 0
+      const cor = c?.cor || '#95A5A6'
+      return `<div style="margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px"><span>${c?c.nome:'Sem categoria'}</span><span style="font-weight:600">R$ ${fmtBR(porCat[k])} <span style="color:var(--text3);font-weight:400">(${pct.toFixed(0)}%)</span></span></div>
+        <div class="fin-cat-bar" style="background:${cor};width:${Math.max(2,pct)}%"></div>
+      </div>`
+    }).join('')}` : ''
+
+  // Lista de lançamentos
+  document.getElementById('fin-lista').innerHTML = `
+    <div class="fin-sec-title"><i class="ti ti-list"></i> Lançamentos (${lancs.length})</div>
+    ${lancs.length ? lancs.map(l => finRowHTML(l)).join('') : '<div class="note">Nenhum lançamento neste mês.</div>'}`
+}
+
+function finRowHTML(l) {
+  const cat = finCategorias.find(c => c.id === l.categoria_id)
+  const cartao = finCartoes.find(c => c.id === l.cartao_id)
+  const pessoa = pessoas.find(p => p.id === l.pessoa_id)
+  const ehReceita = l.tipo === 'receita'
+  const cor = ehReceita ? '#27AE60' : '#C0392B'
+  const sinal = ehReceita ? '+' : '−'
+  const dia = (l.data || '').slice(8,10) + '/' + (l.data || '').slice(5,7)
+  const tags = []
+  if (cat) tags.push(cat.nome)
+  if (l.forma) tags.push(l.forma==='credito' && cartao ? cartao.nome : l.forma)
+  if (l.parcela) tags.push(`Parc. ${l.parcela.atual}/${l.parcela.total}`)
+  if (l.fixa) tags.push('Fixa')
+  if (l.divisao && l.divisao.length>1) tags.push(`÷${l.divisao.length}`)
+  else if (pessoa) tags.push(pessoa.nome)
+  return `<div class="fin-lanc-row">
+    <div style="width:34px;text-align:center;font-size:11px;color:var(--text3)">${dia}</div>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:13px;font-weight:500;color:var(--text)">${l.descricao}</div>
+      <div style="font-size:11px;color:var(--text3)">${tags.join(' · ')}</div>
+    </div>
+    <span style="font-size:14px;font-weight:600;color:${cor};white-space:nowrap">${sinal} R$ ${fmtBR(l.valor)}</span>
+    <button onclick="finExcluir('${l.id}','${l.grupo_id||''}')" style="background:none;border:none;color:#C0392B;cursor:pointer;font-size:15px;padding:4px" title="Excluir"><i class="ti ti-trash"></i></button>
+  </div>`
+}
+
+window.finExcluir = async (id, grupoId) => {
+  const l = finLancamentos.find(x => x.id === id)
+  if (!l) return
+  let escopo = 'um'
+  if (grupoId) {
+    const qtd = finLancamentos.filter(x => x.grupo_id === grupoId).length
+    if (qtd > 1) {
+      escopo = confirm(`Este lançamento faz parte de um grupo de ${qtd} (parcelas/repetições).\n\nOK = excluir TODOS os ${qtd}\nCancelar = excluir só este`) ? 'grupo' : 'um'
+    }
+  }
+  if (escopo === 'um' && !confirm(`Excluir "${l.descricao}" — R$ ${fmtBR(l.valor)}?`)) return
+
+  if (escopo === 'grupo') await supabase.from('fin_lancamentos').delete().eq('grupo_id', grupoId)
+  else await supabase.from('fin_lancamentos').delete().eq('id', id)
+
+  await finCarregarLancamentos()
+  finRenderMes()
+}
 
 init()
 </script>
