@@ -2491,7 +2491,7 @@ function fimProcessar() {
       const restantes = total - atual
       if (restantes <= 0) continue   // última parcela paga, ignora
 
-      const grupoId = uid()
+      const grupoId = crypto.randomUUID()
       const descUpper = (tx.descricao || '').toUpperCase()
 
       // tenta classificar via memória do módulo 1
@@ -2619,7 +2619,6 @@ async function fimConfirmar() {
   for (const g of grupos) {
     for (const p of g.parcelas) {
       rows.push({
-        id: uid(),
         tipo: 'despesa',
         descricao: g.descricao,
         valor: g.valor,
