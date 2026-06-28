@@ -599,6 +599,16 @@ window.importarJSON = async (event) => {
   }
 }
 
+// Retorna (criando se necessário) a fatura "Manual" do mês atual
+async function getFaturaManual(mesRef) {
+  const { data: existing } = await supabase.from('faturas')
+    .select('id').eq('mes_referencia', mesRef).eq('nome_arquivo', 'Manual').single()
+  if (existing) return existing.id
+  const { data: nova } = await supabase.from('faturas')
+    .insert({ nome_arquivo: 'Manual', mes_referencia: mesRef }).select().single()
+  return nova?.id || null
+}
+
 async function garantirPessoasSalvas() {
   for (let i = 0; i < pessoas.length; i++) {
     if (!pessoas[i].id) {
@@ -1277,6 +1287,7 @@ async function injetarLancamentosFixos(mesRef) {
   const { data: fixos } = await supabase.from('lancamentos_fixos').select('*').eq('ativo', true)
   if (!fixos || fixos.length === 0) return 0
 
+  const faturaManualId = await getFaturaManual(mesRef)
   let count = 0
   for (const fix of fixos) {
     // Calcular qual parcela seria neste mês
@@ -1309,7 +1320,7 @@ async function injetarLancamentosFixos(mesRef) {
     }
 
     const { data: txDB } = await supabase.from('transacoes').insert({
-      descricao: fix.descricao, data_compra: 'manual', valor: fix.valor,
+      fatura_id: faturaManualId, descricao: fix.descricao, data_compra: 'manual', valor: fix.valor,
       pessoa_id: fix.pessoa_id, divisao: fix.divisao,
       nota: fix.nota || fix.descricao, parcela,
       classificado_automaticamente: true
@@ -1409,10 +1420,11 @@ window.adicionarManualModal = async () => {
   const recorrente = parcelado ? document.getElementById('modal-recorrente')?.checked : false
   const parcela = parcelado ? { atual: parcAtual, total: parcTotal } : null
 
-  const tx = { id: uid(), fatura_id: null, fatura_nome: 'Manual', descricao: desc, data_compra: 'manual', valor, pessoa_id: pessoaId, auto: false, banco: 'manual', parcela, nota: desc }
+  const faturaManualId = await getFaturaManual(mesAtualRef || mesAtual())
+  const tx = { id: uid(), fatura_id: faturaManualId, fatura_nome: 'Manual', descricao: desc, data_compra: 'manual', valor, pessoa_id: pessoaId, auto: false, banco: 'manual', parcela, nota: desc }
   transacoes.push(tx)
 
-  const { data: txDB } = await supabase.from('transacoes').insert({ descricao: desc, data_compra: 'manual', valor, pessoa_id: pessoaId, parcela, nota: desc, classificado_automaticamente: false }).select().single()
+  const { data: txDB } = await supabase.from('transacoes').insert({ fatura_id: faturaManualId, descricao: desc, data_compra: 'manual', valor, pessoa_id: pessoaId, parcela, nota: desc, classificado_automaticamente: false }).select().single()
   if (txDB) tx.id = txDB.id
   await salvarMemoria(tx)
 
