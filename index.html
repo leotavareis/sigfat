@@ -2664,6 +2664,9 @@ function fimProcessar() {
         const { atual, total } = tx.parcela
         if (total - atual <= 0) continue  // última parcela, ignora
 
+        // tx.valor é o total da compra; valor por parcela = total ÷ nº parcelas
+        const valorParc = Number((tx.valor / total).toFixed(2))
+
         const grupoId = crypto.randomUUID()
         const parcs = []
         for (let i = atual; i <= total; i++) {
@@ -2673,7 +2676,7 @@ function fimProcessar() {
           parcs.push({ num: i, data: `${anoBase + anoOff}-${String(mesAbs+1).padStart(2,'0')}-01` })
         }
         fimGrupos.push({
-          id: grupoId, descricao: descUpper, valor: tx.valor,
+          id: grupoId, descricao: descUpper, valor: valorParc,
           cartao_nome: fatura.nome, cartao_id: cartaoId,
           categoria_id: mem ? '' : fimSugerirCategoria(tx.descricao),
           pessoa_id: mem?.pessoa_id || null,
