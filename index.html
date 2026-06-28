@@ -248,8 +248,24 @@
           <select id="fedit-cartao" style="flex:1"></select>
         </div>
       </div>
-      <div class="fin-grid" style="margin-top:8px">
-        <select id="fedit-pessoa"></select>
+      <!-- Responsável / Divisão -->
+      <div style="margin-top:10px">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap">
+          <span style="font-size:12px;color:var(--text2);font-weight:500">Responsável:</span>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="radio" name="fedit-resp" value="uma" onchange="feditModoDiv()" checked style="accent-color:var(--primary)"> Uma pessoa</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer"><input type="radio" name="fedit-resp" value="dividir" onchange="feditModoDiv()" style="accent-color:var(--primary)"> Dividir</label>
+        </div>
+        <div id="fedit-uma-wrap">
+          <select id="fedit-pessoa" style="width:100%;padding:9px 12px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:14px"></select>
+        </div>
+        <div id="fedit-div-wrap" style="display:none">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+            <button id="fedit-btn-reais" onclick="feditSetModoDiv('reais')" style="padding:3px 10px;border-radius:5px;border:1px solid var(--border2);background:var(--primary);color:#fff;font-size:12px;cursor:pointer">R$</button>
+            <button id="fedit-btn-pct" onclick="feditSetModoDiv('pct')" style="padding:3px 10px;border-radius:5px;border:1px solid var(--border2);background:var(--surface);color:var(--text2);font-size:12px;cursor:pointer">%</button>
+            <span id="fedit-div-soma" style="font-size:11px;color:var(--text3);margin-left:4px"></span>
+          </div>
+          <div id="fedit-div-pessoas"></div>
+        </div>
       </div>
       <div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end;">
         <button class="btn" onclick="document.getElementById('modal-fin-edit').style.display='none'" style="border:1px solid var(--border2);color:var(--text2);background:var(--surface)">Cancelar</button>
@@ -644,8 +660,16 @@
     <div class="card">
       <div class="fin-sec-title"><i class="ti ti-credit-card"></i> Cartões</div>
       <div id="admin-cartoes"></div>
-      <div class="admin-add">
-        <input type="text" id="admin-cartao-nome" placeholder="Novo cartão" style="flex:1;min-width:140px;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:14px" />
+      <div class="admin-add" style="flex-wrap:wrap">
+        <input type="text" id="admin-cartao-nome" placeholder="Nome do cartão" style="flex:2;min-width:140px;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:14px" />
+        <div style="display:flex;align-items:center;gap:4px">
+          <label style="font-size:11px;color:var(--text3);white-space:nowrap">Fecha dia</label>
+          <input type="number" id="admin-cartao-fech" placeholder="—" min="1" max="31" style="width:52px;padding:8px 6px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:13px;text-align:center" />
+        </div>
+        <div style="display:flex;align-items:center;gap:4px">
+          <label style="font-size:11px;color:var(--text3);white-space:nowrap">Vence dia</label>
+          <input type="number" id="admin-cartao-venc" placeholder="—" min="1" max="31" style="width:52px;padding:8px 6px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:13px;text-align:center" />
+        </div>
         <button class="btn btn-primary" onclick="adminAddCartao()"><i class="ti ti-plus"></i> Adicionar</button>
       </div>
     </div>
@@ -2118,6 +2142,10 @@ window.finAddLancamento = async () => {
   const { error } = await supabase.from('fin_lancamentos').insert(linhas)
   if (error) { console.error('Erro fin_lancamentos:', error); fb.innerHTML = '<span style="color:#C0392B">⚠ Erro ao salvar</span>'; return }
 
+  // salva memória com a primeira linha (todas têm a mesma descrição/valor)
+  const l0 = linhas[0]
+  await salvarMemoria({ descricao: l0.descricao, valor: l0.valor, pessoa_id: l0.pessoa_id || null, divisao: l0.divisao || null, nota: l0.nota || null })
+
   // Limpar form
   document.getElementById('fin-desc').value = ''
   document.getElementById('fin-valor').value = ''
@@ -2244,6 +2272,77 @@ window.finExcluir = async (id, grupoId) => {
 }
 
 // ─── EDITAR LANÇAMENTO ────────────────────────────────────────────────────────
+// ─── EDITOR DE DIVISÃO DO MODAL EDIT ─────────────────────────────────────────
+let feditDivLinhas = []   // [{pessoa_id, valor}] sempre em R$
+let feditDivModo  = 'reais'
+
+window.feditModoDiv = () => {
+  const modo = document.querySelector('input[name="fedit-resp"]:checked')?.value
+  document.getElementById('fedit-uma-wrap').style.display  = modo === 'uma' ? 'block' : 'none'
+  document.getElementById('fedit-div-wrap').style.display  = modo === 'dividir' ? 'block' : 'none'
+  if (modo === 'dividir' && !feditDivLinhas.length) feditDivInicializar()
+  feditDivRender()
+}
+
+window.feditSetModoDiv = (m) => {
+  feditDivModo = m
+  document.getElementById('fedit-btn-reais').style.background = m==='reais' ? 'var(--primary)' : 'var(--surface)'
+  document.getElementById('fedit-btn-reais').style.color      = m==='reais' ? '#fff' : 'var(--text2)'
+  document.getElementById('fedit-btn-pct').style.background   = m==='pct'   ? 'var(--primary)' : 'var(--surface)'
+  document.getElementById('fedit-btn-pct').style.color        = m==='pct'   ? '#fff' : 'var(--text2)'
+  feditDivRender()
+}
+
+function feditDivInicializar() {
+  const valor = parseFloat(document.getElementById('fedit-valor').value) || 0
+  const ps = pessoas.filter(p => p.id && !String(p.id).startsWith('local-'))
+  const vp = ps.length ? Number((valor / ps.length).toFixed(2)) : 0
+  feditDivLinhas = ps.map((p, i) => ({
+    pessoa_id: p.id,
+    valor: i === ps.length-1 ? Number((valor - vp*(ps.length-1)).toFixed(2)) : vp
+  }))
+}
+
+function feditDivRender() {
+  const cont = document.getElementById('fedit-div-pessoas'); if (!cont) return
+  const total = parseFloat(document.getElementById('fedit-valor').value) || 0
+  const soma  = feditDivLinhas.reduce((s,d) => s + d.valor, 0)
+  const somaEl = document.getElementById('fedit-div-soma')
+  if (somaEl) {
+    const ok = Math.abs(soma - total) < 0.02
+    somaEl.textContent = feditDivModo === 'reais'
+      ? `Soma: R$ ${fmtBR(soma)} de R$ ${fmtBR(total)}`
+      : `Soma: ${soma.toFixed(1)}%`
+    somaEl.style.color = ok ? '#0F6E56' : '#C0392B'
+  }
+  cont.innerHTML = feditDivLinhas.map((d, i) => {
+    const p = pessoas.find(x => x.id === d.pessoa_id)
+    const exib = feditDivModo === 'pct' && total > 0 ? Number((d.valor/total*100).toFixed(1)) : d.valor
+    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <span style="flex:1;font-size:13px">${p ? p.nome : '?'}</span>
+      <input type="number" value="${exib}" step="0.01" min="0"
+        oninput="feditDivInput(${i},this.value)"
+        style="width:80px;padding:6px 8px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:13px;text-align:right" />
+      <span style="font-size:12px;color:var(--text3)">${feditDivModo==='pct'?'%':'R$'}</span>
+    </div>`
+  }).join('')
+}
+
+window.feditDivInput = (i, val) => {
+  const total = parseFloat(document.getElementById('fedit-valor').value) || 0
+  const v = parseFloat(val) || 0
+  feditDivLinhas[i].valor = feditDivModo === 'pct' ? Number((v/100*total).toFixed(2)) : Number(v.toFixed(2))
+  const somaEl = document.getElementById('fedit-div-soma')
+  const soma = feditDivLinhas.reduce((s,d) => s + d.valor, 0)
+  if (somaEl) {
+    const ok = Math.abs(soma - total) < 0.02
+    somaEl.textContent = feditDivModo === 'reais'
+      ? `Soma: R$ ${fmtBR(soma)} de R$ ${fmtBR(total)}`
+      : `Soma: ${(soma/total*100).toFixed(1)}%`
+    somaEl.style.color = ok ? '#0F6E56' : '#C0392B'
+  }
+}
+
 window.finEditarAbrir = (id) => {
   const l = finLancamentos.find(x => x.id === id); if (!l) return
   document.getElementById('fedit-id').value = id
@@ -2253,17 +2352,22 @@ window.finEditarAbrir = (id) => {
   const cats = finCategorias.filter(c => c.tipo === l.tipo)
   document.getElementById('fedit-categoria').innerHTML = cats.map(c => `<option value="${c.id}">${c.nome}</option>`).join('')
   document.getElementById('fedit-categoria').value = l.categoria_id || ''
-  document.getElementById('fedit-pessoa').innerHTML = pessoas.map(p => `<option value="${p.id||''}">${p.nome}</option>`).join('')
-  document.getElementById('fedit-pessoa').value = l.pessoa_id || ''
   document.getElementById('fedit-cartao').innerHTML = finCartoes.map(c => `<option value="${c.id}">${c.nome}</option>`).join('')
   document.getElementById('fedit-cartao').value = l.cartao_id || ''
   const formaWrap = document.getElementById('fedit-forma-wrap')
   if (l.tipo === 'receita') { formaWrap.style.display = 'none' }
-  else {
-    formaWrap.style.display = 'block'
-    document.getElementById('fedit-forma').value = l.forma || 'dinheiro'
-    finEditOnForma()
-  }
+  else { formaWrap.style.display = 'block'; document.getElementById('fedit-forma').value = l.forma || 'dinheiro'; finEditOnForma() }
+
+  // divisão
+  const temDiv = l.divisao && l.divisao.length > 1
+  document.getElementById('fedit-pessoa').innerHTML = `<option value="">—</option>` + pessoas.map(p => `<option value="${p.id||''}">${p.nome}</option>`).join('')
+  document.getElementById('fedit-pessoa').value = l.pessoa_id || ''
+  document.querySelectorAll('input[name="fedit-resp"]').forEach(r => { r.checked = r.value === (temDiv ? 'dividir' : 'uma') })
+  feditDivModo = 'reais'
+  feditDivLinhas = temDiv ? l.divisao.map(d => ({...d})) : []
+  feditSetModoDiv('reais')
+  feditModoDiv()
+
   document.getElementById('fedit-feedback').textContent = ''
   document.getElementById('modal-fin-edit').style.display = 'flex'
 }
@@ -2274,26 +2378,33 @@ window.finEditarSalvar = async () => {
   const fb = document.getElementById('fedit-feedback')
   const id = document.getElementById('fedit-id').value
   const l = finLancamentos.find(x => x.id === id); if (!l) return
-  const desc = document.getElementById('fedit-desc').value.trim()
+  const desc  = document.getElementById('fedit-desc').value.trim()
   const valor = parseFloat(document.getElementById('fedit-valor').value)
-  const data = document.getElementById('fedit-data').value
+  const data  = document.getElementById('fedit-data').value
   if (!desc || !valor || valor <= 0 || !data) { fb.innerHTML = '<span style="color:#C0392B">⚠ Preencha descrição, valor e data</span>'; return }
   const categoria_id = document.getElementById('fedit-categoria').value || null
-  const pid = document.getElementById('fedit-pessoa').value
-  const pessoa_id = pid && !pid.startsWith('local-') ? pid : null
-  const ehDespesa = l.tipo === 'despesa'
-  const forma = ehDespesa ? document.getElementById('fedit-forma').value : null
-  const cartao_id = (ehDespesa && forma === 'credito') ? (document.getElementById('fedit-cartao').value || null) : null
-  // Se tinha divisão, mantém quem divide e recalcula igualmente para o novo valor
-  let divisao = l.divisao
-  if (divisao && divisao.length > 1) {
-    const vp = valor / divisao.length
-    divisao = divisao.map((d, i) => ({ pessoa_id: d.pessoa_id, valor: i === divisao.length-1 ? Number((valor - vp*(divisao.length-1)).toFixed(2)) : Number(vp.toFixed(2)) }))
+  const ehDespesa    = l.tipo === 'despesa'
+  const forma        = ehDespesa ? document.getElementById('fedit-forma').value : null
+  const cartao_id    = (ehDespesa && forma === 'credito') ? (document.getElementById('fedit-cartao').value || null) : null
+
+  const modoResp = document.querySelector('input[name="fedit-resp"]:checked')?.value || 'uma'
+  let divisao = null, pessoa_id = null
+  if (modoResp === 'dividir' && feditDivLinhas.length > 1) {
+    // ajusta última linha para bater exato no total
+    const somaParc = feditDivLinhas.slice(0,-1).reduce((s,d)=>s+d.valor,0)
+    feditDivLinhas[feditDivLinhas.length-1].valor = Number((valor - somaParc).toFixed(2))
+    divisao = feditDivLinhas.map(d => ({pessoa_id: d.pessoa_id, valor: d.valor}))
+  } else {
+    const pid = document.getElementById('fedit-pessoa').value
+    pessoa_id = pid && !pid.startsWith('local-') ? pid : null
   }
-  const patch = { descricao: desc, valor, data, categoria_id, forma, cartao_id, pessoa_id: (divisao && divisao.length>1) ? null : pessoa_id, divisao, nota: desc }
+
+  const patch = { descricao: desc, valor, data, categoria_id, forma, cartao_id, pessoa_id, divisao, nota: desc }
   fb.innerHTML = '<span style="color:var(--text3)">Salvando...</span>'
   const { error } = await supabase.from('fin_lancamentos').update(patch).eq('id', id)
-  if (error) { console.error('Erro editar lançamento:', error); fb.innerHTML = '<span style="color:#C0392B">⚠ Erro ao salvar</span>'; return }
+  if (error) { fb.innerHTML = '<span style="color:#C0392B">⚠ Erro ao salvar</span>'; return }
+  // salva memória para reconhecimento futuro
+  await salvarMemoria({ descricao: desc, valor, pessoa_id, divisao, nota: desc })
   document.getElementById('modal-fin-edit').style.display = 'none'
   await finCarregarLancamentos(); finRenderMes()
 }
@@ -2395,15 +2506,27 @@ window.adminAddPessoa = async () => {
 function renderAdminCartoes() {
   const cont = document.getElementById('admin-cartoes')
   cont.innerHTML = finCartoes.length ? finCartoes.map(c => `
-    <div class="admin-row" id="acard-${c.id}">
-      <input type="text" value="${escAttr(c.nome)}" id="acard-nome-${c.id}" />
+    <div class="admin-row" id="acard-${c.id}" style="flex-wrap:wrap;gap:6px">
+      <input type="text" value="${escAttr(c.nome)}" id="acard-nome-${c.id}" style="flex:2;min-width:120px"/>
+      <div style="display:flex;align-items:center;gap:4px">
+        <label style="font-size:11px;color:var(--text3);white-space:nowrap">Fecha</label>
+        <input type="number" value="${c.dia_fechamento||''}" id="acard-fech-${c.id}" min="1" max="31" placeholder="—"
+          style="width:48px;padding:6px 4px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:13px;text-align:center" />
+      </div>
+      <div style="display:flex;align-items:center;gap:4px">
+        <label style="font-size:11px;color:var(--text3);white-space:nowrap">Vence</label>
+        <input type="number" value="${c.dia_vencimento||''}" id="acard-venc-${c.id}" min="1" max="31" placeholder="—"
+          style="width:48px;padding:6px 4px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:13px;text-align:center" />
+      </div>
       <button class="admin-icon-btn" style="color:#0F6E56" onclick="adminSalvarCartao('${c.id}')" title="Salvar"><i class="ti ti-device-floppy"></i></button>
       <button class="admin-icon-btn" style="color:#C0392B" onclick="adminExcluirCartao('${c.id}','${escJs(c.nome)}')" title="Excluir"><i class="ti ti-trash"></i></button>
     </div>`).join('') : '<div class="note">Nenhum cartão cadastrado.</div>'
 }
 window.adminSalvarCartao = async (id) => {
   const nome = document.getElementById('acard-nome-'+id).value.trim(); if (!nome) return
-  await supabase.from('fin_cartoes').update({ nome }).eq('id', id)
+  const dia_fechamento = parseInt(document.getElementById('acard-fech-'+id).value) || null
+  const dia_vencimento = parseInt(document.getElementById('acard-venc-'+id).value) || null
+  await supabase.from('fin_cartoes').update({ nome, dia_fechamento, dia_vencimento }).eq('id', id)
   await finCarregarCartoes(); finPopularCartoes(); flashAdmin('acard-'+id)
 }
 window.adminExcluirCartao = async (id, nome) => {
@@ -2413,8 +2536,12 @@ window.adminExcluirCartao = async (id, nome) => {
 }
 window.adminAddCartao = async () => {
   const nome = document.getElementById('admin-cartao-nome').value.trim(); if (!nome) return
-  await supabase.from('fin_cartoes').insert({ nome })
+  const dia_fechamento = parseInt(document.getElementById('admin-cartao-fech').value) || null
+  const dia_vencimento = parseInt(document.getElementById('admin-cartao-venc').value) || null
+  await supabase.from('fin_cartoes').insert({ nome, dia_fechamento, dia_vencimento })
   document.getElementById('admin-cartao-nome').value = ''
+  document.getElementById('admin-cartao-fech').value = ''
+  document.getElementById('admin-cartao-venc').value = ''
   await finCarregarCartoes(); finPopularCartoes(); renderAdminCartoes()
 }
 
