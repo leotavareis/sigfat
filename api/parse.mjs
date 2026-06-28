@@ -64,7 +64,26 @@ export default async function handler(req, res) {
       res.status(502).json({ error: 'A IA não retornou JSON válido', raw: texto.slice(0, 500) })
       return
     }
-    const fatura = JSON.parse(match[0])
+    const bruto = JSON.parse(match[0])
+
+    // Normaliza para o MESMO schema que o sistema já usa (evita quebras):
+    // fatura: { nome, total, transacoes: [ { data, descricao, valor, parcela? } ] }
+    const transacoes = (bruto.transacoes || []).map(t => {
+      const tx = {
+        data: String(t.data || ''),
+        descricao: String(t.descricao || '').trim(),
+        valor: Number(t.valor) || 0
+      }
+      if (t.parcela && Number(t.parcela.atual) && Number(t.parcela.total)) {
+        tx.parcela = { atual: Number(t.parcela.atual), total: Number(t.parcela.total) }
+      }
+      return tx
+    })
+    const fatura = {
+      nome: bruto.nome || nome || 'Cartão',
+      total: Number(bruto.total) || Number(transacoes.reduce((s, t) => s + t.valor, 0).toFixed(2)),
+      transacoes
+    }
     res.status(200).json(fatura)
   } catch (e) {
     console.error('Erro ao processar fatura:', e)

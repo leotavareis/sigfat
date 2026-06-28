@@ -667,8 +667,10 @@ window.importarPDFs = async (event) => {
 
     msg.textContent = `✓ ${faturas.length} fatura(s) lida(s)`
     const total = faturas.reduce((s,f) => s + (f.transacoes?.length || 0), 0)
+    // Objeto idêntico ao schema do sistema (mes_referencia, gerado_em, faturas)
+    const data = { mes_referencia: mesRef, gerado_em: new Date().toISOString().slice(0,10), faturas }
     // Revisão antes de inserir — o usuário autoriza
-    abrirRevisaoPDF({ mes_referencia: mesRef, faturas }, total)
+    abrirRevisaoPDF(data, total)
   } catch(e) {
     msg.textContent = ''
     alertEl.innerHTML = `<div class="alert alert-err">⚠ ${e.message}</div>`
