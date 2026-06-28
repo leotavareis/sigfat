@@ -207,6 +207,17 @@
 
 <!-- Modal de edição de lançamento (módulo Finanças) -->
 <!-- MODAL: Importar parcelas do JSON -->
+<!-- MODAL RESUMO MÊS / WHATSAPP / PIX -->
+<div id="modal-fin-resumo" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:400;align-items:flex-start;justify-content:center;overflow-y:auto;padding:1rem 0;" onclick="if(event.target===this)this.style.display='none'">
+  <div style="background:var(--surface);border-radius:var(--radius);max-width:600px;width:95%;margin:0 auto;box-shadow:0 8px 40px rgba(0,0,0,.22);overflow:hidden">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid var(--border)">
+      <span style="font-size:15px;font-weight:700;color:var(--text)"><i class="ti ti-send"></i> Resumo do mês</span>
+      <button onclick="document.getElementById('modal-fin-resumo').style.display='none'" style="background:none;border:none;font-size:22px;color:var(--text3);cursor:pointer;line-height:1">&times;</button>
+    </div>
+    <div id="fin-resumo-body" style="padding:16px 20px;max-height:85vh;overflow-y:auto"></div>
+  </div>
+</div>
+
 <div id="modal-fim" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:400;align-items:flex-start;justify-content:center;overflow-y:auto;padding:1rem 0;" onclick="if(event.target===this)this.style.display='none'">
   <div style="background:var(--surface);border-radius:var(--radius);max-width:760px;width:95%;margin:0 auto;box-shadow:0 8px 40px rgba(0,0,0,.22);overflow:hidden">
     <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid var(--border);background:var(--surface)">
@@ -551,6 +562,7 @@
       </div>
       <div class="fin-totais" id="fin-totais"></div>
       <div id="fin-cartoes-box" style="margin-top:16px"></div>
+      <div id="fin-por-pessoa-box" style="margin-top:16px"></div>
       <div id="fin-categorias-box" style="margin-top:16px"></div>
       <div id="fin-lista" style="margin-top:16px"></div>
     </div>
@@ -2200,6 +2212,31 @@ function finRenderMes() {
       return `<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid var(--border)"><span>${c?c.nome:'Sem cartão'}</span><span style="font-weight:600">R$ ${fmtBR(porCartao[k])}</span></div>`
     }).join('')}` : ''
 
+  // Por pessoa (despesas)
+  const porPessoa = {}
+  lancs.filter(l => l.tipo === 'despesa').forEach(l => {
+    if (l.divisao && l.divisao.length > 0) {
+      l.divisao.forEach(d => {
+        porPessoa[d.pessoa_id] = (porPessoa[d.pessoa_id] || 0) + Number(d.valor)
+      })
+    } else if (l.pessoa_id) {
+      porPessoa[l.pessoa_id] = (porPessoa[l.pessoa_id] || 0) + Number(l.valor)
+    }
+  })
+  const pessoaChaves = Object.keys(porPessoa).sort((a,b) => porPessoa[b] - porPessoa[a])
+  document.getElementById('fin-por-pessoa-box').innerHTML = pessoaChaves.length ? `
+    <div class="fin-sec-title" style="display:flex;justify-content:space-between;align-items:center">
+      <span><i class="ti ti-users"></i> Despesas por pessoa</span>
+      <button onclick="finMostrarResumo()" style="padding:5px 12px;border-radius:6px;border:1px solid #185FA5;background:#E6F1FB;color:#185FA5;font-size:12px;font-weight:600;cursor:pointer"><i class="ti ti-send"></i> Cobrar / WhatsApp</button>
+    </div>
+    ${pessoaChaves.map(pid => {
+      const p = pessoas.find(x => x.id === pid)
+      return `<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid var(--border)">
+        <span>${p ? p.nome : '?'}</span>
+        <span style="font-weight:600;color:#C0392B">R$ ${fmtBR(porPessoa[pid])}</span>
+      </div>`
+    }).join('')}` : ''
+
   // Por categoria (despesas)
   const porCat = {}
   lancs.filter(l => l.tipo==='despesa').forEach(l => {
@@ -2250,6 +2287,95 @@ function finRowHTML(l) {
     <button onclick="finEditarAbrir('${l.id}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:15px;padding:4px" title="Editar"><i class="ti ti-edit"></i></button>
     <button onclick="finExcluir('${l.id}','${l.grupo_id||''}')" style="background:none;border:none;color:#C0392B;cursor:pointer;font-size:15px;padding:4px" title="Excluir"><i class="ti ti-trash"></i></button>
   </div>`
+}
+
+window.finMostrarResumo = function() {
+  const lancs = finDoMes()
+  const mes = `${FIN_MESES[finMes-1]} ${finAno}`
+
+  // calcular totais por pessoa
+  const porPessoa = {}
+  const itemsPorPessoa = {}
+  lancs.filter(l => l.tipo === 'despesa').forEach(l => {
+    const addItem = (pid, valor) => {
+      if (!porPessoa[pid]) { porPessoa[pid] = 0; itemsPorPessoa[pid] = [] }
+      porPessoa[pid] += Number(valor)
+      itemsPorPessoa[pid].push({ descricao: l.descricao, valor: Number(valor), parcela: l.parcela })
+    }
+    if (l.divisao && l.divisao.length > 0) {
+      l.divisao.forEach(d => addItem(d.pessoa_id, d.valor))
+    } else if (l.pessoa_id) {
+      addItem(l.pessoa_id, l.valor)
+    }
+  })
+
+  // montar mensagem WhatsApp
+  let msg = `💰 *Despesas — ${mes}*\n\n`
+  const pixCards = []
+  let pIdx = 0
+  Object.keys(porPessoa).forEach(pid => {
+    const p = pessoas.find(x => x.id === pid)
+    if (!p) return
+    const total = porPessoa[pid]
+    const itens = itemsPorPessoa[pid]
+    msg += `👤 *${p.nome}*\nTotal: *R$ ${fmtBR(total)}*\n`
+    itens.forEach(it => {
+      const parc = it.parcela ? ` (${it.parcela.atual}/${it.parcela.total})` : ''
+      msg += `  ▸ ${it.descricao}${parc} — R$ ${fmtBR(it.valor)}\n`
+    })
+    msg += '\n'
+    if (pixCfg.chave) {
+      pIdx++
+      pixCards.push({ nome: p.nome, total, codigo: gerarPixCopiaECola(total, `SIGFIN${pIdx}`) })
+    }
+  })
+  if (pixCfg.chave) msg += `🔑 *Chave Pix:* ${pixCfg.chave}\n_Cole o código no app do banco_`
+
+  const body = document.getElementById('fin-resumo-body')
+  body.innerHTML = `
+    <!-- mensagem -->
+    <div style="font-size:12px;color:var(--text3);margin-bottom:6px;font-weight:500">MENSAGEM WHATSAPP</div>
+    <pre id="fin-resumo-msg" style="font-family:inherit;font-size:13px;line-height:1.6;white-space:pre-wrap;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;margin:0 0 10px">${msg}</pre>
+    <button onclick="finCopiarResumo()" style="width:100%;padding:10px;background:#25D366;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:16px">
+      <i class="ti ti-brand-whatsapp"></i> Copiar mensagem
+    </button>
+    ${pixCards.length ? `
+    <div style="font-size:12px;color:var(--text3);margin-bottom:8px;font-weight:500">PIX COPIA E COLA — por pessoa</div>
+    ${pixCards.map((c, idx) => `
+      <div style="background:var(--bg);border:1px solid #b2e0a0;border-radius:10px;padding:12px 14px;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span style="font-size:14px;font-weight:700;color:var(--text)">${c.nome}</span>
+          <span style="font-size:14px;font-weight:700;color:#C0392B">R$ ${fmtBR(c.total)}</span>
+        </div>
+        <div style="font-size:10px;color:#888;font-family:monospace;word-break:break-all;background:#fff;border:1px solid var(--border);border-radius:6px;padding:6px 8px;margin-bottom:8px">${c.codigo}</div>
+        <button onclick="finCopiarPix('${c.codigo}',this)" style="width:100%;padding:9px;background:#185FA5;color:#fff;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer">
+          <i class="ti ti-copy"></i> Copiar Pix — ${c.nome}
+        </button>
+      </div>`).join('')}` : `
+    <div style="background:#FFF8E1;border:1px solid #FFE082;border-radius:8px;padding:10px 14px;font-size:13px;color:#7A5C00">
+      <i class="ti ti-info-circle"></i> Configure sua chave Pix em <b>Admin → Configurações</b> para gerar os códigos.
+    </div>`}
+  `
+  document.getElementById('modal-fin-resumo').style.display = 'flex'
+}
+
+window.finCopiarResumo = () => {
+  const txt = document.getElementById('fin-resumo-msg')?.textContent || ''
+  navigator.clipboard.writeText(txt).then(() => {
+    const btn = document.querySelector('#fin-resumo-body button')
+    if (!btn) return
+    const orig = btn.innerHTML
+    btn.innerHTML = '<i class="ti ti-check"></i> Copiado!'
+    setTimeout(() => btn.innerHTML = orig, 2000)
+  })
+}
+
+window.finCopiarPix = (codigo, btn) => {
+  navigator.clipboard.writeText(codigo).then(() => {
+    const orig = btn.innerHTML
+    btn.innerHTML = '<i class="ti ti-check"></i> Copiado!'
+    setTimeout(() => btn.innerHTML = orig, 2000)
+  })
 }
 
 window.finExcluir = async (id, grupoId) => {
