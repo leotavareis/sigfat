@@ -1,0 +1,14 @@
+{
+  "name": "SIGFIN — Controle Financeiro",
+  "short_name": "SIGFIN",
+  "description": "Lançamento de receitas e despesas, faturas e divisão de contas.",
+  "start_url": "/?app=1#financas",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f4f5f7",
+  "theme_color": "#185FA5",
+  "icons": [
+    { "src": "/icon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "any maskable" }
+  ]
+}

@@ -1,7 +1,7 @@
 {
-  "name": "sigfat",
+  "name": "sigfin",
   "version": "1.0.0",
-  "description": "Sistema de gestão de faturas de cartão de crédito com IA",
+  "description": "SIGFIN — Controle financeiro: lançamento de receitas e despesas, faturas de cartão e divisão de contas, com IA",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

@@ -2,8 +2,17 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SigFat — Sistema de Faturas</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>SIGFIN — Controle Financeiro</title>
+  <!-- PWA / salvar como app no celular -->
+  <meta name="theme-color" content="#185FA5" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="SIGFIN" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+  <link rel="apple-touch-icon" href="/icon.svg" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -122,12 +131,13 @@
 </head>
 <body>
 <header>
-  <div class="logo">SigFat <span>Gestão de Faturas</span></div>
+  <div class="logo">SIGFIN <span>Controle Financeiro</span></div>
   <div style="display:flex;align-items:center;gap:14px">
     <div class="header-nav">
       <button class="header-nav-btn active" id="hnav-nova" onclick="trocarView('nova')"><i class="ti ti-home"></i> Início</button>
       <button class="header-nav-btn" id="hnav-fin" onclick="trocarView('financas')"><i class="ti ti-wallet"></i> Finanças</button>
       <button class="header-nav-btn" id="hnav-hist" onclick="trocarView('historico')"><i class="ti ti-history"></i> Histórico</button>
+      <button class="header-nav-btn" id="hnav-admin" onclick="trocarView('admin')"><i class="ti ti-settings"></i> Admin</button>
     </div>
     <div id="sync-status" style="font-size:12px;color:var(--text3)"></div>
   </div>
@@ -192,6 +202,50 @@
       <button onclick="document.getElementById('modal-detalhes').style.display='none'" style="background:none;border:none;font-size:20px;color:var(--text3);cursor:pointer;">&times;</button>
     </div>
     <div id="modal-det-body" style="overflow-y:auto;padding:12px 20px;flex:1;"></div>
+  </div>
+</div>
+
+<!-- Modal de edição de lançamento (módulo Finanças) -->
+<div id="modal-fin-edit" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;align-items:center;justify-content:center;" onclick="if(event.target===this)this.style.display='none'">
+  <div style="background:var(--surface);border-radius:var(--radius);max-width:440px;width:92%;max-height:88vh;overflow-y:auto;margin:auto;box-shadow:0 8px 32px rgba(0,0,0,.18);">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--border);">
+      <span style="font-size:14px;font-weight:600;color:var(--text);"><i class="ti ti-edit"></i> Editar lançamento</span>
+      <button onclick="document.getElementById('modal-fin-edit').style.display='none'" style="background:none;border:none;font-size:20px;color:var(--text3);cursor:pointer;">&times;</button>
+    </div>
+    <div style="padding:16px 20px;" id="view-financas-edit">
+      <input type="hidden" id="fedit-id" />
+      <div class="fin-grid">
+        <input type="text" id="fedit-desc" placeholder="Descrição" style="flex:2" />
+        <input type="number" id="fedit-valor" placeholder="0.00" step="0.01" min="0" />
+      </div>
+      <div class="fin-grid" style="margin-top:8px">
+        <select id="fedit-categoria"></select>
+        <input type="date" id="fedit-data" />
+      </div>
+      <div id="fedit-forma-wrap" style="margin-top:8px">
+        <div class="fin-forma-row">
+          <label>Forma:</label>
+          <select id="fedit-forma" onchange="finEditOnForma()">
+            <option value="dinheiro">Dinheiro</option>
+            <option value="debito">Débito</option>
+            <option value="credito">Crédito</option>
+            <option value="pix">Pix</option>
+          </select>
+        </div>
+        <div id="fedit-cartao-wrap" class="fin-forma-row" style="display:none;margin-top:8px">
+          <label>Cartão:</label>
+          <select id="fedit-cartao" style="flex:1"></select>
+        </div>
+      </div>
+      <div class="fin-grid" style="margin-top:8px">
+        <select id="fedit-pessoa"></select>
+      </div>
+      <div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn" onclick="document.getElementById('modal-fin-edit').style.display='none'" style="border:1px solid var(--border2);color:var(--text2);background:var(--surface)">Cancelar</button>
+        <button class="btn btn-primary" onclick="finEditarSalvar()"><i class="ti ti-check"></i> Salvar</button>
+      </div>
+      <div id="fedit-feedback" style="font-size:12px;margin-top:8px;text-align:right"></div>
+    </div>
   </div>
 </div>
 
@@ -311,7 +365,7 @@
       <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px;"><i class="ti ti-brand-whatsapp" style="color:#25D366"></i> Enviar pelo WhatsApp</div>
       <div class="pix-input-wrap">
         <label>Sua chave Pix:</label>
-        <input type="text" id="chave-pix" placeholder="CPF, e-mail, telefone ou chave aleatória" oninput="renderResumo()" />
+        <input type="text" id="chave-pix" class="no-upper" placeholder="CPF, e-mail, telefone ou chave aleatória" oninput="renderResumo()" />
       </div>
       <div class="whatsapp-box" id="whatsapp-box" style="display:none">
         <div class="whatsapp-header">
@@ -383,6 +437,10 @@
     .fin-sec-title { font-size:13px; font-weight:600; color:var(--text); margin-bottom:8px; }
   </style>
   <div id="view-financas" class="view">
+
+    <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+      <button class="btn" onclick="trocarView('admin')" style="border:1px solid var(--border2);color:var(--text2);background:var(--surface);font-size:12px;padding:6px 12px"><i class="ti ti-settings"></i> Gerenciar categorias, pessoas e cartões</button>
+    </div>
 
     <!-- Lançamento rápido -->
     <div class="card">
@@ -471,6 +529,63 @@
 
   </div><!-- /view-financas -->
 
+  <!-- VIEW: ADMIN -->
+  <style>
+    .admin-row { display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+    .admin-row input[type=text] { flex:1; min-width:120px; }
+    .admin-row input[type=color] { width:40px; height:34px; padding:2px; border:1px solid var(--border2); border-radius:var(--radius-sm); background:var(--surface); cursor:pointer; }
+    .admin-row select { padding:7px 8px; border:1px solid var(--border2); border-radius:var(--radius-sm); font-size:13px; background:var(--surface); color:var(--text); }
+    .admin-icon-btn { background:none; border:none; cursor:pointer; font-size:16px; padding:6px; border-radius:6px; }
+    .admin-add { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:12px; padding-top:12px; border-top:1px solid var(--border); }
+    @media (max-width:480px) {
+      .fin-tot-card .val { font-size: 15px; }
+      .fin-tot-card .lbl { font-size: 10px; }
+      .fin-totais { gap: 6px; }
+      .main { padding: 1rem 0.75rem 5rem; }
+    }
+  </style>
+  <div id="view-admin" class="view">
+    <div class="card">
+      <div class="step-header">
+        <div class="step-num active"><i class="ti ti-settings" style="font-size:12px"></i></div>
+        <div><div class="step-title">Administração</div><div class="step-sub">Crie, edite e exclua categorias, pessoas e cartões</div></div>
+      </div>
+    </div>
+
+    <!-- Categorias -->
+    <div class="card">
+      <div class="fin-sec-title"><i class="ti ti-tags"></i> Categorias</div>
+      <div id="admin-cats"></div>
+      <div class="admin-add">
+        <input type="text" id="admin-cat-nome" placeholder="Nova categoria" style="flex:1;min-width:140px;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:14px" />
+        <select id="admin-cat-tipo" style="padding:8px;border:1px solid var(--border2);border-radius:var(--radius-sm)"><option value="despesa">Despesa</option><option value="receita">Receita</option></select>
+        <input type="color" id="admin-cat-cor" value="#95A5A6" style="width:40px;height:36px;padding:2px;border:1px solid var(--border2);border-radius:var(--radius-sm)" />
+        <button class="btn btn-primary" onclick="adminAddCat()"><i class="ti ti-plus"></i> Adicionar</button>
+      </div>
+    </div>
+
+    <!-- Pessoas -->
+    <div class="card">
+      <div class="fin-sec-title"><i class="ti ti-users"></i> Pessoas</div>
+      <div id="admin-pessoas"></div>
+      <div class="admin-add">
+        <input type="text" id="admin-pessoa-nome" placeholder="Nova pessoa" style="flex:1;min-width:140px;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:14px" />
+        <input type="color" id="admin-pessoa-cor" value="#6C5CE7" style="width:40px;height:36px;padding:2px;border:1px solid var(--border2);border-radius:var(--radius-sm)" />
+        <button class="btn btn-primary" onclick="adminAddPessoa()"><i class="ti ti-plus"></i> Adicionar</button>
+      </div>
+    </div>
+
+    <!-- Cartões -->
+    <div class="card">
+      <div class="fin-sec-title"><i class="ti ti-credit-card"></i> Cartões</div>
+      <div id="admin-cartoes"></div>
+      <div class="admin-add">
+        <input type="text" id="admin-cartao-nome" placeholder="Novo cartão" style="flex:1;min-width:140px;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:14px" />
+        <button class="btn btn-primary" onclick="adminAddCartao()"><i class="ti ti-plus"></i> Adicionar</button>
+      </div>
+    </div>
+  </div><!-- /view-admin -->
+
 </div>
 
 <script type="module">
@@ -515,6 +630,7 @@ async function init() {
   await carregarTransacoesSalvas()
   setSyncStatus('✓ Conectado')
   setTimeout(() => setSyncStatus(''), 2000)
+  routeHash()  // abre a view indicada na URL (#financas, #admin...) — atalho de app no celular
 }
 
 // Carrega a memória unificada: chave canônica -> {pessoa_id, divisao, nota}
@@ -1159,16 +1275,19 @@ window.trocarView = (v) => {
   document.getElementById('view-nova').classList.toggle('active', v==='nova')
   document.getElementById('view-historico').classList.toggle('active', v==='historico')
   document.getElementById('view-financas').classList.toggle('active', v==='financas')
+  document.getElementById('view-admin').classList.toggle('active', v==='admin')
   // Sincronizar estados ativos de todas as barras
   document.getElementById('hnav-nova')?.classList.toggle('active', v==='nova')
   document.getElementById('hnav-fin')?.classList.toggle('active', v==='financas')
   document.getElementById('hnav-hist')?.classList.toggle('active', v==='historico')
+  document.getElementById('hnav-admin')?.classList.toggle('active', v==='admin')
   document.getElementById('fnav-nova')?.classList.toggle('active', v==='nova')
   document.getElementById('fnav-fin')?.classList.toggle('active', v==='financas')
   document.getElementById('fnav-hist')?.classList.toggle('active', v==='historico')
   document.querySelectorAll('.nav-tab').forEach((t,i) => t.classList.toggle('active', (i===0&&v==='nova')||(i===1&&v==='historico')))
   if (v==='historico') carregarHistorico()
   if (v==='financas') finAbrir()
+  if (v==='admin') adminAbrir()
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
@@ -2017,6 +2136,7 @@ function finRowHTML(l) {
       <div style="font-size:11px;color:var(--text3)">${tags.join(' · ')}</div>
     </div>
     <span style="font-size:14px;font-weight:600;color:${cor};white-space:nowrap">${sinal} R$ ${fmtBR(l.valor)}</span>
+    <button onclick="finEditarAbrir('${l.id}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:15px;padding:4px" title="Editar"><i class="ti ti-edit"></i></button>
     <button onclick="finExcluir('${l.id}','${l.grupo_id||''}')" style="background:none;border:none;color:#C0392B;cursor:pointer;font-size:15px;padding:4px" title="Excluir"><i class="ti ti-trash"></i></button>
   </div>`
 }
@@ -2039,6 +2159,203 @@ window.finExcluir = async (id, grupoId) => {
   await finCarregarLancamentos()
   finRenderMes()
 }
+
+// ─── EDITAR LANÇAMENTO ────────────────────────────────────────────────────────
+window.finEditarAbrir = (id) => {
+  const l = finLancamentos.find(x => x.id === id); if (!l) return
+  document.getElementById('fedit-id').value = id
+  document.getElementById('fedit-desc').value = l.descricao || ''
+  document.getElementById('fedit-valor').value = Number(l.valor)
+  document.getElementById('fedit-data').value = l.data || ''
+  const cats = finCategorias.filter(c => c.tipo === l.tipo)
+  document.getElementById('fedit-categoria').innerHTML = cats.map(c => `<option value="${c.id}">${c.nome}</option>`).join('')
+  document.getElementById('fedit-categoria').value = l.categoria_id || ''
+  document.getElementById('fedit-pessoa').innerHTML = pessoas.map(p => `<option value="${p.id||''}">${p.nome}</option>`).join('')
+  document.getElementById('fedit-pessoa').value = l.pessoa_id || ''
+  document.getElementById('fedit-cartao').innerHTML = finCartoes.map(c => `<option value="${c.id}">${c.nome}</option>`).join('')
+  document.getElementById('fedit-cartao').value = l.cartao_id || ''
+  const formaWrap = document.getElementById('fedit-forma-wrap')
+  if (l.tipo === 'receita') { formaWrap.style.display = 'none' }
+  else {
+    formaWrap.style.display = 'block'
+    document.getElementById('fedit-forma').value = l.forma || 'dinheiro'
+    finEditOnForma()
+  }
+  document.getElementById('fedit-feedback').textContent = ''
+  document.getElementById('modal-fin-edit').style.display = 'flex'
+}
+window.finEditOnForma = () => {
+  document.getElementById('fedit-cartao-wrap').style.display = document.getElementById('fedit-forma').value === 'credito' ? 'flex' : 'none'
+}
+window.finEditarSalvar = async () => {
+  const fb = document.getElementById('fedit-feedback')
+  const id = document.getElementById('fedit-id').value
+  const l = finLancamentos.find(x => x.id === id); if (!l) return
+  const desc = document.getElementById('fedit-desc').value.trim()
+  const valor = parseFloat(document.getElementById('fedit-valor').value)
+  const data = document.getElementById('fedit-data').value
+  if (!desc || !valor || valor <= 0 || !data) { fb.innerHTML = '<span style="color:#C0392B">⚠ Preencha descrição, valor e data</span>'; return }
+  const categoria_id = document.getElementById('fedit-categoria').value || null
+  const pid = document.getElementById('fedit-pessoa').value
+  const pessoa_id = pid && !pid.startsWith('local-') ? pid : null
+  const ehDespesa = l.tipo === 'despesa'
+  const forma = ehDespesa ? document.getElementById('fedit-forma').value : null
+  const cartao_id = (ehDespesa && forma === 'credito') ? (document.getElementById('fedit-cartao').value || null) : null
+  // Se tinha divisão, mantém quem divide e recalcula igualmente para o novo valor
+  let divisao = l.divisao
+  if (divisao && divisao.length > 1) {
+    const vp = valor / divisao.length
+    divisao = divisao.map((d, i) => ({ pessoa_id: d.pessoa_id, valor: i === divisao.length-1 ? Number((valor - vp*(divisao.length-1)).toFixed(2)) : Number(vp.toFixed(2)) }))
+  }
+  const patch = { descricao: desc, valor, data, categoria_id, forma, cartao_id, pessoa_id: (divisao && divisao.length>1) ? null : pessoa_id, divisao, nota: desc }
+  fb.innerHTML = '<span style="color:var(--text3)">Salvando...</span>'
+  const { error } = await supabase.from('fin_lancamentos').update(patch).eq('id', id)
+  if (error) { console.error('Erro editar lançamento:', error); fb.innerHTML = '<span style="color:#C0392B">⚠ Erro ao salvar</span>'; return }
+  document.getElementById('modal-fin-edit').style.display = 'none'
+  await finCarregarLancamentos(); finRenderMes()
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// MÓDULO ADMIN — gerenciar categorias, pessoas e cartões
+// ════════════════════════════════════════════════════════════════════════════
+const escAttr = s => String(s||'').replace(/"/g,'&quot;')
+const escJs   = s => String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'")
+function flashAdmin(rowId) {
+  const el = document.getElementById(rowId); if (!el) return
+  el.style.transition = 'background .3s'; el.style.background = '#E1F5EE'
+  setTimeout(() => { el.style.background = '' }, 700)
+}
+
+async function adminAbrir() {
+  await carregarPessoas()
+  await finCarregarCategorias()
+  await finCarregarCartoes()
+  if (document.getElementById('fin-categoria')) finPopularSelects()
+  renderAdminCats(); renderAdminPessoas(); renderAdminCartoes()
+}
+
+function renderAdminCats() {
+  const cont = document.getElementById('admin-cats')
+  const ordem = { despesa: 0, receita: 1 }
+  const cats = [...finCategorias].sort((a,b) => (ordem[a.tipo]-ordem[b.tipo]) || (a.posicao-b.posicao))
+  cont.innerHTML = cats.map(c => `
+    <div class="admin-row" id="acat-${c.id}">
+      <input type="color" value="${c.cor||'#95A5A6'}" id="acat-cor-${c.id}" onchange="adminSalvarCat('${c.id}')" />
+      <input type="text" value="${escAttr(c.nome)}" id="acat-nome-${c.id}" />
+      <select id="acat-tipo-${c.id}"><option value="despesa" ${c.tipo==='despesa'?'selected':''}>Despesa</option><option value="receita" ${c.tipo==='receita'?'selected':''}>Receita</option></select>
+      <button class="admin-icon-btn" style="color:#0F6E56" onclick="adminSalvarCat('${c.id}')" title="Salvar"><i class="ti ti-device-floppy"></i></button>
+      <button class="admin-icon-btn" style="color:#C0392B" onclick="adminExcluirCat('${c.id}','${escJs(c.nome)}')" title="Excluir"><i class="ti ti-trash"></i></button>
+    </div>`).join('')
+}
+window.adminSalvarCat = async (id) => {
+  const nome = document.getElementById('acat-nome-'+id).value.trim()
+  const tipo = document.getElementById('acat-tipo-'+id).value
+  const cor  = document.getElementById('acat-cor-'+id).value
+  if (!nome) return
+  await supabase.from('fin_categorias').update({ nome, tipo, cor }).eq('id', id)
+  await finCarregarCategorias(); finPopularCategorias(); flashAdmin('acat-'+id)
+}
+window.adminExcluirCat = async (id, nome) => {
+  if (!confirm(`Excluir a categoria "${nome}"? Os lançamentos dela ficam sem categoria.`)) return
+  await supabase.from('fin_categorias').delete().eq('id', id)
+  await finCarregarCategorias(); finPopularCategorias(); renderAdminCats()
+}
+window.adminAddCat = async () => {
+  const nome = document.getElementById('admin-cat-nome').value.trim()
+  const tipo = document.getElementById('admin-cat-tipo').value
+  const cor  = document.getElementById('admin-cat-cor').value
+  if (!nome) return
+  const pos = finCategorias.filter(c => c.tipo === tipo).length
+  await supabase.from('fin_categorias').insert({ nome, tipo, cor, posicao: pos })
+  document.getElementById('admin-cat-nome').value = ''
+  await finCarregarCategorias(); finPopularCategorias(); renderAdminCats()
+}
+
+function renderAdminPessoas() {
+  const cont = document.getElementById('admin-pessoas')
+  cont.innerHTML = pessoas.map((p,i) => {
+    const real = !!p.id
+    const rid = p.id || ('local'+i)
+    return `<div class="admin-row" id="apes-${rid}">
+      <input type="color" value="${p.cor||'#6C5CE7'}" id="apes-cor-${rid}" ${real?`onchange="adminSalvarPessoa('${p.id}')"`:'disabled'} />
+      <input type="text" value="${escAttr(p.nome)}" id="apes-nome-${rid}" ${real?'':'disabled'} />
+      ${real
+        ? `<button class="admin-icon-btn" style="color:#0F6E56" onclick="adminSalvarPessoa('${p.id}')" title="Salvar"><i class="ti ti-device-floppy"></i></button>
+           <button class="admin-icon-btn" style="color:#C0392B" onclick="adminExcluirPessoa('${p.id}','${escJs(p.nome)}')" title="Excluir"><i class="ti ti-trash"></i></button>`
+        : '<span class="note" style="font-size:11px">padrão — salve no Início</span>'}
+    </div>`
+  }).join('')
+}
+window.adminSalvarPessoa = async (id) => {
+  const nome = document.getElementById('apes-nome-'+id).value.trim()
+  const cor  = document.getElementById('apes-cor-'+id).value
+  if (!nome) return
+  await supabase.from('pessoas').update({ nome, cor }).eq('id', id)
+  await carregarPessoas(); finPopularSelects(); renderNomes(); flashAdmin('apes-'+id)
+}
+window.adminExcluirPessoa = async (id, nome) => {
+  if (!confirm(`Excluir a pessoa "${nome}"? Os lançamentos dela ficam sem responsável.`)) return
+  await supabase.from('pessoas').delete().eq('id', id)
+  await carregarPessoas(); finPopularSelects(); renderNomes(); renderAdminPessoas()
+}
+window.adminAddPessoa = async () => {
+  const nome = document.getElementById('admin-pessoa-nome').value.trim()
+  const cor  = document.getElementById('admin-pessoa-cor').value
+  if (!nome) return
+  const { data } = await supabase.from('pessoas').insert({ nome, cor, posicao: pessoas.length }).select().single()
+  if (data) {
+    document.getElementById('admin-pessoa-nome').value = ''
+    await carregarPessoas(); finPopularSelects(); renderNomes(); renderAdminPessoas()
+  }
+}
+
+function renderAdminCartoes() {
+  const cont = document.getElementById('admin-cartoes')
+  cont.innerHTML = finCartoes.length ? finCartoes.map(c => `
+    <div class="admin-row" id="acard-${c.id}">
+      <input type="text" value="${escAttr(c.nome)}" id="acard-nome-${c.id}" />
+      <button class="admin-icon-btn" style="color:#0F6E56" onclick="adminSalvarCartao('${c.id}')" title="Salvar"><i class="ti ti-device-floppy"></i></button>
+      <button class="admin-icon-btn" style="color:#C0392B" onclick="adminExcluirCartao('${c.id}','${escJs(c.nome)}')" title="Excluir"><i class="ti ti-trash"></i></button>
+    </div>`).join('') : '<div class="note">Nenhum cartão cadastrado.</div>'
+}
+window.adminSalvarCartao = async (id) => {
+  const nome = document.getElementById('acard-nome-'+id).value.trim(); if (!nome) return
+  await supabase.from('fin_cartoes').update({ nome }).eq('id', id)
+  await finCarregarCartoes(); finPopularCartoes(); flashAdmin('acard-'+id)
+}
+window.adminExcluirCartao = async (id, nome) => {
+  if (!confirm(`Excluir o cartão "${nome}"?`)) return
+  await supabase.from('fin_cartoes').delete().eq('id', id)
+  await finCarregarCartoes(); finPopularCartoes(); renderAdminCartoes()
+}
+window.adminAddCartao = async () => {
+  const nome = document.getElementById('admin-cartao-nome').value.trim(); if (!nome) return
+  await supabase.from('fin_cartoes').insert({ nome })
+  document.getElementById('admin-cartao-nome').value = ''
+  await finCarregarCartoes(); finPopularCartoes(); renderAdminCartoes()
+}
+
+// ─── MAIÚSCULAS AUTOMÁTICAS (exceto campos marcados com .no-upper) ─────────────
+document.addEventListener('input', e => {
+  const el = e.target
+  if (!(el instanceof HTMLElement)) return
+  if (!el.matches('input[type="text"], input[type="search"], input:not([type]), textarea')) return
+  if (el.classList.contains('no-upper')) return
+  const up = el.value.toUpperCase()
+  if (up === el.value) return
+  const s = el.selectionStart, en = el.selectionEnd
+  el.value = up
+  try { el.setSelectionRange(s, en) } catch(_) {}
+}, true)
+
+// ─── ROTEAMENTO POR HASH (atalho p/ abrir direto como app no celular) ─────────
+function routeHash() {
+  const h = (location.hash || '').replace('#','').toLowerCase()
+  if (h === 'financas' || h === 'lancar' || h === 'lancamentos') trocarView('financas')
+  else if (h === 'admin') trocarView('admin')
+  else if (h === 'historico') trocarView('historico')
+}
+window.addEventListener('hashchange', routeHash)
 
 init()
 </script>

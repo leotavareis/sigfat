@@ -1,15 +1,16 @@
-# SigFat — Sistema de Gestão de Faturas de Cartão de Crédito
+# SIGFIN — Controle Financeiro
 
-Sistema inteligente para leitura e classificação de faturas de cartão de crédito, com memória em nuvem. A IA lê as faturas e, nos meses seguintes, já reconhece automaticamente quem é responsável por cada compra.
+Sistema inteligente de controle financeiro pessoal: lançamento de **receitas e despesas**, leitura e classificação de **faturas de cartão**, e **divisão de contas** — com memória em nuvem. A IA lê as faturas e, nos meses seguintes, já reconhece automaticamente quem é responsável por cada compra.
 
 ## Funcionalidades
 
-- 📄 Upload de PDF ou imagem das faturas (múltiplos cartões)
-- 🤖 Leitura automática com IA (Claude Sonnet)
+- 💸 **Módulo Finanças**: lança receitas e despesas no momento em que acontecem (à vista, débito, crédito, Pix), com categorias, despesas fixas/recorrentes e parcelamento
+- 📄 **Módulo Faturas**: upload de PDF das faturas (múltiplos cartões), lido por IA (Claude Sonnet)
 - 🧠 Memória em nuvem: compras já classificadas são reconhecidas automaticamente no próximo mês
-- 👥 Até 7 pessoas (você + 6)
-- 📊 Resumo final com total por pessoa
-- ☁️ Acesse de qualquer computador com a mesma URL
+- 👥 Pessoas: divisão de despesas e total por pessoa
+- ⚙️ **Admin**: gerencie categorias, pessoas e cartões (criar, editar, excluir)
+- 📱 Multiplataforma (celular, tablet e computador) — pode ser salvo como app na tela inicial do iPhone/Android
+- ☁️ Acesse de qualquer dispositivo com a mesma URL
 
 ---
 
