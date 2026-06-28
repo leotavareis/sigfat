@@ -2446,6 +2446,11 @@ const FIM_CAT_SUGESTAO = [
   { palavras: ['gil do gas','mp*gildogas'], cat: 'MORADIA' },
 ]
 
+window.fimAbrir = fimAbrir
+window.fimProcessar = fimProcessar
+window.fimRenderRevisao = fimRenderRevisao
+window.fimConfirmar = fimConfirmar
+
 function fimSugerirCategoria(desc) {
   const d = (desc || '').toLowerCase()
   for (const r of FIM_CAT_SUGESTAO) {
