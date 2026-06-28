@@ -82,3 +82,17 @@ ALTER TABLE transacoes ADD COLUMN IF NOT EXISTS nota TEXT;
 -- Adicionar colunas divisao e parcela nas transações
 ALTER TABLE transacoes ADD COLUMN IF NOT EXISTS divisao JSONB;
 ALTER TABLE transacoes ADD COLUMN IF NOT EXISTS parcela JSONB;
+
+-- Tabela de memória de classificações (chave = descrição normalizada)
+-- Permite reusar classificações entre meses: "ASAAS *life academia" → sempre Leandro
+CREATE TABLE IF NOT EXISTS memoria_transacao (
+  chave TEXT PRIMARY KEY,
+  descricao TEXT,
+  pessoa_id UUID REFERENCES pessoas(id) ON DELETE SET NULL,
+  divisao JSONB,
+  nota TEXT,
+  atualizado_em TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE memoria_transacao ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "acesso_publico_memoria" ON memoria_transacao FOR ALL USING (true) WITH CHECK (true);
+CREATE INDEX IF NOT EXISTS idx_memoria_chave ON memoria_transacao(chave);

@@ -348,7 +348,13 @@ let pessoas = [], classificacoes = {}, anotacoes_mem = {}, transacoes = [], arqu
 let memoria = {}  // chave canônica -> { pessoa_id, divisao, nota }
 let pixCfg = { tipo:'telefone', chave:'', nome:'', cidade:'' }
 
-// Chave canônica única de identidade de uma transação (usada em TODA persistência/dedup)
+// Chave para MEMÓRIA: só descrição normalizada — permite reusar entre meses
+// "ASAAS *life academia" do mês passado bate com o deste mês
+function chaveMemoria(tx) {
+  return (tx.descricao || '').toLowerCase().trim()
+}
+
+// Chave completa: usada APENAS para dedup dentro do mesmo import
 function chaveTx(tx) {
   const desc = (tx.descricao||'').toLowerCase().trim()
   const valor = Number(tx.valor||0).toFixed(2)
@@ -378,7 +384,7 @@ async function carregarMemoria() {
 
 // Salva/atualiza a memória de uma transação (uma única fonte de verdade)
 async function salvarMemoria(tx) {
-  const chave = chaveTx(tx)
+  const chave = chaveMemoria(tx)
   const registro = { pessoa_id: tx.pessoa_id || null, divisao: tx.divisao || null, nota: tx.nota || null }
   memoria[chave] = registro
   await supabase.from('memoria_transacao').upsert({
@@ -388,7 +394,7 @@ async function salvarMemoria(tx) {
 
 // Aplica a memória conhecida a uma transação recém-importada
 function aplicarMemoria(tx) {
-  const m = memoria[chaveTx(tx)]
+  const m = memoria[chaveMemoria(tx)]
   if (!m) return { ...tx, pessoa_id:null, divisao:null, nota:tx.nota||null, auto:false }
   return { ...tx, pessoa_id:m.pessoa_id||null, divisao:m.divisao||null, nota:m.nota||tx.nota||null, auto:!!(m.pessoa_id||m.divisao) }
 }
