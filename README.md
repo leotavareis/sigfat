@@ -31,7 +31,9 @@ No painel do Vercel, vá em **Settings → Environment Variables** e adicione:
 |------|-------|
 | `VITE_SUPABASE_URL` | URL do seu projeto Supabase |
 | `VITE_SUPABASE_ANON_KEY` | Chave anon do Supabase |
-| `VITE_ANTHROPIC_API_KEY` | Sua chave da API Anthropic |
+| `ANTHROPIC_API_KEY` | Sua chave da API Anthropic (sem prefixo `VITE_` — fica só no servidor) |
+
+> A leitura dos PDFs acontece na função serverless `api/parse.mjs`, que roda no servidor do Vercel. Por isso a chave da Anthropic usa o nome `ANTHROPIC_API_KEY` (sem `VITE_`): variáveis com prefixo `VITE_` vão embutidas no navegador e ficariam expostas.
 
 ### 3. Deploy no Vercel
 
@@ -44,6 +46,7 @@ O projeto é detectado automaticamente como Vite. Conecte o repositório `sigfat
 ```
 sigfat/
 ├── index.html           # Aplicação principal (frontend completo)
+├── api/parse.mjs        # Função serverless: lê PDF da fatura com a IA (chave fica no servidor)
 ├── vite.config.js       # Configuração do Vite
 ├── package.json         # Dependências
 ├── supabase_schema.sql  # Script para criar as tabelas no Supabase
