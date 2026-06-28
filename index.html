@@ -2465,13 +2465,32 @@ function fimSugerirCategoria(desc) {
 function fimAbrir() {
   document.getElementById('modal-fim').style.display = 'flex'
   document.getElementById('fim-body').innerHTML = `
-    <p style="font-size:13px;color:var(--text2);margin-bottom:4px">Cole o JSON de transações. Apenas as <strong>compras parceladas</strong> serão importadas (com todas as parcelas futuras).</p>
-    <p style="font-size:12px;color:var(--text3);margin-bottom:10px">A classificação do sistema anterior (quem é a pessoa responsável) será aplicada automaticamente quando encontrada.</p>
-    <textarea id="fim-json" class="no-upper" rows="8" style="width:100%;padding:10px;border:1px solid var(--border2);border-radius:8px;font-size:12px;font-family:monospace;resize:vertical" placeholder='Cole o conteúdo do arquivo .json aqui...'></textarea>
-    <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+    <p style="font-size:13px;color:var(--text2);margin-bottom:10px">Cole o JSON de transações e escolha o que importar. A classificação do sistema anterior será aplicada automaticamente quando encontrada.</p>
+    <textarea id="fim-json" class="no-upper" rows="7" style="width:100%;padding:10px;border:1px solid var(--border2);border-radius:8px;font-size:12px;font-family:monospace;resize:vertical" placeholder='Cole o conteúdo do arquivo .json aqui...'></textarea>
+    <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text);cursor:pointer">
+        <input type="radio" name="fim-modo" value="todas" checked style="accent-color:var(--primary)">
+        Importar <strong>todas</strong> as transações (parceladas + à vista)
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text);cursor:pointer">
+        <input type="radio" name="fim-modo" value="parcelas" style="accent-color:var(--primary)">
+        Apenas <strong>compras parceladas</strong> (com todas as parcelas futuras)
+      </label>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
       <button class="btn btn-primary" onclick="fimProcessar()"><i class="ti ti-cpu"></i> Processar</button>
       <span id="fim-err" style="font-size:12px;color:#c0392b"></span>
     </div>`
+}
+
+function fimDataTx(txData, mesBase, anoBase) {
+  // converte "DD/MM" para "YYYY-MM-DD" usando o ano da referência
+  const partes = (txData || '').split('/')
+  if (partes.length < 2) return `${anoBase}-${String(mesBase).padStart(2,'0')}-01`
+  const dia = parseInt(partes[0]), mes = parseInt(partes[1])
+  // se mês da transação > mês de referência, veio do ano anterior
+  const ano = mes > mesBase ? anoBase - 1 : anoBase
+  return `${ano}-${String(mes).padStart(2,'0')}-${String(dia).padStart(2,'0')}`
 }
 
 function fimProcessar() {
@@ -2482,52 +2501,57 @@ function fimProcessar() {
 
   const partes = (parsed.mes_referencia || '6/2026').split('/')
   const mesBase = parseInt(partes[0]), anoBase = parseInt(partes[1])
+  const modo = document.querySelector('input[name="fim-modo"]:checked')?.value || 'todas'
 
   fimGrupos = []
   for (const fatura of (parsed.faturas || [])) {
+    const cartaoId = finCartoes.find(c =>
+      fatura.nome.toLowerCase().includes(c.nome.toLowerCase()) ||
+      c.nome.toLowerCase().includes(fatura.nome.split(' ')[0].toLowerCase())
+    )?.id || null
+
     for (const tx of (fatura.transacoes || [])) {
-      if (!tx.parcela) continue
-      const { atual, total } = tx.parcela
-      const restantes = total - atual
-      if (restantes <= 0) continue   // última parcela paga, ignora
-
-      const grupoId = crypto.randomUUID()
       const descUpper = (tx.descricao || '').toUpperCase()
-
-      // tenta classificar via memória do módulo 1
       const chave = `${(tx.descricao||'').toLowerCase().trim()}|${Number(tx.valor).toFixed(2)}`
       const mem = memoria[chave] || null
 
-      // parcelas: de atual até total, mapeando o mês
-      const parcs = []
-      for (let i = atual; i <= total; i++) {
-        const offset = i - atual
-        const mesAbs = (mesBase - 1 + offset) % 12
-        const anoOff = Math.floor((mesBase - 1 + offset) / 12)
-        const m = mesAbs + 1
-        const a = anoBase + anoOff
-        parcs.push({ num: i, data: `${a}-${String(m).padStart(2,'0')}-01` })
+      if (tx.parcela) {
+        // ── PARCELADA ──────────────────────────────────────────────
+        const { atual, total } = tx.parcela
+        if (total - atual <= 0) continue  // última parcela, ignora
+
+        const grupoId = crypto.randomUUID()
+        const parcs = []
+        for (let i = atual; i <= total; i++) {
+          const offset = i - atual
+          const mesAbs = (mesBase - 1 + offset) % 12
+          const anoOff = Math.floor((mesBase - 1 + offset) / 12)
+          parcs.push({ num: i, data: `${anoBase + anoOff}-${String(mesAbs+1).padStart(2,'0')}-01` })
+        }
+        fimGrupos.push({
+          id: grupoId, descricao: descUpper, valor: tx.valor,
+          cartao_nome: fatura.nome, cartao_id: cartaoId,
+          categoria_id: mem ? '' : fimSugerirCategoria(tx.descricao),
+          pessoa_id: mem?.pessoa_id || null,
+          parcelas: parcs, atual, total, deletado: false,
+        })
+
+      } else if (modo === 'todas') {
+        // ── À VISTA / SEM PARCELAMENTO ─────────────────────────────
+        const dataStr = fimDataTx(tx.data, mesBase, anoBase)
+        fimGrupos.push({
+          id: crypto.randomUUID(), descricao: descUpper, valor: tx.valor,
+          cartao_nome: fatura.nome, cartao_id: cartaoId,
+          categoria_id: mem ? '' : fimSugerirCategoria(tx.descricao),
+          pessoa_id: mem?.pessoa_id || null,
+          parcelas: [{ num: null, data: dataStr }],
+          atual: null, total: null, deletado: false,
+        })
       }
-
-      // cartao: tenta casar pelo nome
-      const cartaoId = finCartoes.find(c => fatura.nome.toLowerCase().includes(c.nome.toLowerCase()) || c.nome.toLowerCase().includes(fatura.nome.split(' ')[0].toLowerCase()))?.id || null
-
-      fimGrupos.push({
-        id: grupoId,
-        descricao: descUpper,
-        valor: tx.valor,
-        cartao_nome: fatura.nome,
-        cartao_id: cartaoId,
-        categoria_id: mem ? '' : fimSugerirCategoria(tx.descricao),
-        pessoa_id: mem?.pessoa_id || null,
-        parcelas: parcs,     // array {num, data}
-        atual, total,
-        deletado: false,
-      })
     }
   }
 
-  if (!fimGrupos.length) { document.getElementById('fim-err').textContent = 'Nenhuma compra parcelada com parcelas futuras encontrada.'; return }
+  if (!fimGrupos.length) { errEl.textContent = 'Nenhuma transação encontrada para importar.'; return }
   fimRenderRevisao()
 }
 
@@ -2577,8 +2601,7 @@ function fimRenderRevisao() {
             <div style="font-size:10px;color:var(--text3)">${escAttr(g.cartao_nome)}</div>
           </td>
           <td style="padding:7px 8px;text-align:center;white-space:nowrap">
-            <span style="font-size:11px;color:var(--text2)">${g.atual}→${g.total}</span><br>
-            <span style="font-size:10px;color:var(--text3)">${g.parcelas.length} a criar</span>
+            ${g.total ? `<span style="font-size:11px;color:var(--text2)">${g.atual}→${g.total}</span><br><span style="font-size:10px;color:var(--text3)">${g.parcelas.length} a criar</span>` : `<span style="font-size:11px;color:var(--text3)">à vista</span>`}
           </td>
           <td style="padding:7px 8px">
             <select onchange="fimGrupos.filter(x=>!x.deletado)[${gi}].categoria_id=this.value" style="padding:4px 6px;border:1px solid var(--border2);border-radius:4px;font-size:11px;max-width:120px">
@@ -2618,7 +2641,7 @@ async function fimConfirmar() {
   const rows = []
   for (const g of grupos) {
     for (const p of g.parcelas) {
-      rows.push({
+      const row = {
         tipo: 'despesa',
         descricao: g.descricao,
         valor: g.valor,
@@ -2628,11 +2651,14 @@ async function fimConfirmar() {
         cartao_id: g.cartao_id || null,
         pessoa_id: g.pessoa_id || null,
         divisao: null,
-        parcela: { atual: p.num, total: g.total },
-        grupo_id: g.id,
         fixa: false,
         nota: null,
-      })
+      }
+      if (g.total) {
+        row.parcela = { atual: p.num, total: g.total }
+        row.grupo_id = g.id
+      }
+      rows.push(row)
     }
   }
 
