@@ -438,8 +438,8 @@
   </style>
   <div id="view-financas" class="view">
 
-    <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
-      <button class="btn" onclick="trocarView('admin')" style="border:1px solid var(--border2);color:var(--text2);background:var(--surface);font-size:12px;padding:6px 12px"><i class="ti ti-settings"></i> Gerenciar categorias, pessoas e cartões</button>
+    <div class="fin-manage-row" style="display:flex;justify-content:flex-end;margin-bottom:10px">
+      <button class="btn fin-manage-btn" onclick="trocarView('admin')" style="border:1px solid var(--border2);color:var(--text2);background:var(--surface);font-size:12px;padding:6px 12px"><i class="ti ti-settings"></i> <span class="txt-full">Gerenciar categorias, pessoas e cartões</span><span class="txt-short">Gerenciar</span></button>
     </div>
 
     <!-- Lançamento rápido -->
@@ -537,11 +537,64 @@
     .admin-row select { padding:7px 8px; border:1px solid var(--border2); border-radius:var(--radius-sm); font-size:13px; background:var(--surface); color:var(--text); }
     .admin-icon-btn { background:none; border:none; cursor:pointer; font-size:16px; padding:6px; border-radius:6px; }
     .admin-add { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:12px; padding-top:12px; border-top:1px solid var(--border); }
-    @media (max-width:480px) {
-      .fin-tot-card .val { font-size: 15px; }
-      .fin-tot-card .lbl { font-size: 10px; }
-      .fin-totais { gap: 6px; }
-      .main { padding: 1rem 0.75rem 5rem; }
+
+    /* texto curto/longo responsivo (botões) */
+    .txt-short { display:none; }
+    .txt-full { display:inline; }
+
+    /* ─── REFINAMENTO MOBILE (não afeta o desktop) ─────────────────────── */
+    @media (max-width:768px) {
+      /* iOS não dá mais zoom ao focar um campo (>=16px) */
+      #view-financas input, #view-financas select,
+      #view-financas-edit input, #view-financas-edit select,
+      #view-admin input, #view-admin select { font-size:16px; }
+
+      /* respiro geral e barra inferior sem cobrir conteúdo */
+      .main { padding: 1rem 0.875rem 7rem; }
+      .card { padding: 1.1rem 1rem; border-radius: 14px; }
+
+      /* botão "Gerenciar" discreto */
+      .txt-full { display:none; }
+      .txt-short { display:inline; }
+      .fin-manage-row { margin-bottom: 6px; }
+      .fin-manage-btn { padding:6px 12px!important; border-radius:18px!important; }
+
+      /* cabeçalho do card mais enxuto */
+      #view-financas .step-sub { font-size:12px; line-height:1.35; }
+
+      /* toggle Despesa/Receita maior e mais tátil */
+      .fin-tipo-btn { padding:13px; font-size:15px; }
+
+      /* form: descrição ocupa a linha toda; valor vira campo "herói" */
+      #view-financas .fin-grid { gap:10px; }
+      #view-financas #fin-desc { flex-basis:100%; }
+      #view-financas #fin-valor { flex-basis:100%; font-size:20px; font-weight:700; text-align:right; height:52px; }
+
+      /* alvos de toque maiores nos controles do form */
+      #view-financas input, #view-financas select { min-height:46px; }
+      .fin-check { padding:6px 0; font-size:14px; }
+      .fin-check input { width:20px!important; height:20px; }
+
+      /* botão Adicionar: largura total, fácil com o polegar */
+      #view-financas .btn-primary { width:100%; justify-content:center; padding:14px; font-size:16px; font-weight:600; }
+
+      /* navegação do mês com toque confortável */
+      #fin-mes-label { font-size:15px; }
+
+      /* lista de lançamentos: mais espaço e botões maiores */
+      .fin-lanc-row { padding:12px 0; gap:8px; }
+      .fin-lanc-row button { font-size:19px!important; padding:8px!important; min-width:40px; }
+      .fin-sec-title { font-size:14px; }
+
+      /* totais: cartões com altura e hierarquia melhores */
+      .fin-totais { gap:8px; }
+      .fin-tot-card { padding:14px 8px; border-radius:10px; }
+      .fin-tot-card .val { font-size:16px; }
+      .fin-tot-card .lbl { font-size:10px; }
+    }
+
+    @media (max-width:380px) {
+      .fin-tot-card .val { font-size:14px; }
     }
   </style>
   <div id="view-admin" class="view">
@@ -624,13 +677,14 @@ function chaveTx(tx) {
 async function init() {
   setSyncStatus('Conectando...')
   await carregarPessoas()
+  // se a URL já abriu a aba Finanças, repovoa os selects agora que as pessoas chegaram
+  if (finCarregado) finPopularSelects()
   await carregarMemoria()
   renderNomes()
   await carregarChavePix()
   await carregarTransacoesSalvas()
   setSyncStatus('✓ Conectado')
   setTimeout(() => setSyncStatus(''), 2000)
-  routeHash()  // abre a view indicada na URL (#financas, #admin...) — atalho de app no celular
 }
 
 // Carrega a memória unificada: chave canônica -> {pessoa_id, divisao, nota}
@@ -2357,6 +2411,7 @@ function routeHash() {
 }
 window.addEventListener('hashchange', routeHash)
 
+routeHash()  // mostra imediatamente a view da URL (#financas...) — antes dos dados carregarem
 init()
 </script>
 </body>
