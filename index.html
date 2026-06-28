@@ -206,6 +206,17 @@
 </div>
 
 <!-- Modal de edição de lançamento (módulo Finanças) -->
+<!-- MODAL: Importar parcelas do JSON -->
+<div id="modal-fim" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:400;align-items:flex-start;justify-content:center;overflow-y:auto;padding:1rem 0;" onclick="if(event.target===this)this.style.display='none'">
+  <div style="background:var(--surface);border-radius:var(--radius);max-width:760px;width:95%;margin:0 auto;box-shadow:0 8px 40px rgba(0,0,0,.22);overflow:hidden">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid var(--border);background:var(--surface)">
+      <span style="font-size:15px;font-weight:700;color:var(--text)"><i class="ti ti-file-import"></i> Importar parcelas</span>
+      <button onclick="document.getElementById('modal-fim').style.display='none'" style="background:none;border:none;font-size:22px;color:var(--text3);cursor:pointer;line-height:1">&times;</button>
+    </div>
+    <div id="fim-body" style="padding:16px 20px;max-height:82vh;overflow-y:auto"></div>
+  </div>
+</div>
+
 <div id="modal-fin-edit" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;align-items:center;justify-content:center;" onclick="if(event.target===this)this.style.display='none'">
   <div style="background:var(--surface);border-radius:var(--radius);max-width:440px;width:92%;max-height:88vh;overflow-y:auto;margin:auto;box-shadow:0 8px 32px rgba(0,0,0,.18);">
     <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--border);">
@@ -438,7 +449,8 @@
   </style>
   <div id="view-financas" class="view">
 
-    <div class="fin-manage-row" style="display:flex;justify-content:flex-end;margin-bottom:10px">
+    <div class="fin-manage-row" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;flex-wrap:wrap">
+      <button class="btn" onclick="fimAbrir()" style="border:1px solid #185FA5;color:#185FA5;background:#E6F1FB;font-size:12px;padding:6px 12px"><i class="ti ti-file-import"></i> <span class="txt-full">Importar parcelas do JSON</span><span class="txt-short">Importar</span></button>
       <button class="btn fin-manage-btn" onclick="trocarView('admin')" style="border:1px solid var(--border2);color:var(--text2);background:var(--surface);font-size:12px;padding:6px 12px"><i class="ti ti-settings"></i> <span class="txt-full">Gerenciar categorias, pessoas e cartões</span><span class="txt-short">Gerenciar</span></button>
     </div>
 
@@ -2413,6 +2425,224 @@ window.addEventListener('hashchange', routeHash)
 
 routeHash()  // mostra imediatamente a view da URL (#financas...) — antes dos dados carregarem
 init()
+
+// ─── IMPORTAR PARCELAS DO JSON ────────────────────────────────────────────────
+let fimGrupos = []   // lista de grupos (1 por compra parcelada) para revisão
+
+const FIM_CAT_SUGESTAO = [
+  { palavras: ['mercado','supermercado','atacado','super pao','hortifruti','gomes ltd','superfacil','gula mix','la casa'], cat: 'ALIMENTAÇÃO' },
+  { palavras: ['farmacia','drogaria','pharma','pague menos','central pharma','drogaria dose'], cat: 'SAÚDE' },
+  { palavras: ['medico','saude doctor','odontoat','dental','dra.','cro-rn','mp*odonto','mp*joao','medicar'], cat: 'SAÚDE' },
+  { palavras: ['academia','life academia','asaas *life'], cat: 'SAÚDE' },
+  { palavras: ['posto','combustivel','carrefour','postos rcm','lubricar'], cat: 'TRANSPORTE' },
+  { palavras: ['uber','99','taxi','onibus','metro','trem'], cat: 'TRANSPORTE' },
+  { palavras: ['gol','latam','smiles','livelo','airbnb','pousada','cia.aerea','taxa de embarque','hotel'], cat: 'LAZER' },
+  { palavras: ['restaurante','pizza','churrascaria','lanche','sorvete','hoje','padaria','dogao','zumbi'], cat: 'ALIMENTAÇÃO' },
+  { palavras: ['netflix','spotify','amazon prime','apple.com','disney','hbo','globoplay','telecine','tvin','fullcftv'], cat: 'ASSINATURAS' },
+  { palavras: ['internet','alares','claro','vivo','tim','net','oi '], cat: 'ASSINATURAS' },
+  { palavras: ['shopee','amazon','americanas','mercadolivre','pontofrio','aliexpress','outlet','riachuelo','carajas'], cat: 'COMPRAS' },
+  { palavras: ['escola','colegio','faculdade','curso','aula','anuidade'], cat: 'EDUCAÇÃO' },
+  { palavras: ['aluguel','condominio','luz','agua','gas','energia','moradia','iptu'], cat: 'MORADIA' },
+  { palavras: ['gil do gas','mp*gildogas'], cat: 'MORADIA' },
+]
+
+function fimSugerirCategoria(desc) {
+  const d = (desc || '').toLowerCase()
+  for (const r of FIM_CAT_SUGESTAO) {
+    if (r.palavras.some(p => d.includes(p))) {
+      const c = finCategorias.find(x => x.nome.toUpperCase() === r.cat && x.tipo === 'despesa')
+      if (c) return c.id
+    }
+  }
+  return ''
+}
+
+function fimAbrir() {
+  document.getElementById('modal-fim').style.display = 'flex'
+  document.getElementById('fim-body').innerHTML = `
+    <p style="font-size:13px;color:var(--text2);margin-bottom:4px">Cole o JSON de transações. Apenas as <strong>compras parceladas</strong> serão importadas (com todas as parcelas futuras).</p>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:10px">A classificação do sistema anterior (quem é a pessoa responsável) será aplicada automaticamente quando encontrada.</p>
+    <textarea id="fim-json" rows="8" style="width:100%;padding:10px;border:1px solid var(--border2);border-radius:8px;font-size:12px;font-family:monospace;resize:vertical" placeholder='Cole o conteúdo do arquivo .json aqui...'></textarea>
+    <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+      <button class="btn btn-primary" onclick="fimProcessar()"><i class="ti ti-cpu"></i> Processar</button>
+      <span id="fim-err" style="font-size:12px;color:#c0392b"></span>
+    </div>`
+}
+
+function fimProcessar() {
+  const jsonStr = (document.getElementById('fim-json')?.value || '').trim()
+  const errEl = document.getElementById('fim-err')
+  let parsed
+  try { parsed = JSON.parse(jsonStr) } catch(e) { errEl.textContent = 'JSON inválido: ' + e.message; return }
+
+  const partes = (parsed.mes_referencia || '6/2026').split('/')
+  const mesBase = parseInt(partes[0]), anoBase = parseInt(partes[1])
+
+  fimGrupos = []
+  for (const fatura of (parsed.faturas || [])) {
+    for (const tx of (fatura.transacoes || [])) {
+      if (!tx.parcela) continue
+      const { atual, total } = tx.parcela
+      const restantes = total - atual
+      if (restantes <= 0) continue   // última parcela paga, ignora
+
+      const grupoId = uid()
+      const descUpper = (tx.descricao || '').toUpperCase()
+
+      // tenta classificar via memória do módulo 1
+      const chave = `${(tx.descricao||'').toLowerCase().trim()}|${Number(tx.valor).toFixed(2)}`
+      const mem = memoria[chave] || null
+
+      // parcelas: de atual até total, mapeando o mês
+      const parcs = []
+      for (let i = atual; i <= total; i++) {
+        const offset = i - atual
+        const mesAbs = (mesBase - 1 + offset) % 12
+        const anoOff = Math.floor((mesBase - 1 + offset) / 12)
+        const m = mesAbs + 1
+        const a = anoBase + anoOff
+        parcs.push({ num: i, data: `${a}-${String(m).padStart(2,'0')}-01` })
+      }
+
+      // cartao: tenta casar pelo nome
+      const cartaoId = finCartoes.find(c => fatura.nome.toLowerCase().includes(c.nome.toLowerCase()) || c.nome.toLowerCase().includes(fatura.nome.split(' ')[0].toLowerCase()))?.id || null
+
+      fimGrupos.push({
+        id: grupoId,
+        descricao: descUpper,
+        valor: tx.valor,
+        cartao_nome: fatura.nome,
+        cartao_id: cartaoId,
+        categoria_id: mem ? '' : fimSugerirCategoria(tx.descricao),
+        pessoa_id: mem?.pessoa_id || null,
+        parcelas: parcs,     // array {num, data}
+        atual, total,
+        deletado: false,
+      })
+    }
+  }
+
+  if (!fimGrupos.length) { document.getElementById('fim-err').textContent = 'Nenhuma compra parcelada com parcelas futuras encontrada.'; return }
+  fimRenderRevisao()
+}
+
+function fimRenderRevisao() {
+  const grupos = fimGrupos.filter(g => !g.deletado)
+  const catOpts = finCategorias.filter(c => c.tipo==='despesa').map(c => `<option value="${c.id}">${c.nome}</option>`).join('')
+  const pessoaOpts = `<option value="">—</option>` + pessoas.map(p => `<option value="${p.id||''}">${p.nome}</option>`).join('')
+  const cartaoOpts = `<option value="">Sem cartão</option>` + finCartoes.map(c => `<option value="${c.id}">${c.nome}</option>`).join('')
+
+  const totalLinhas = grupos.reduce((s, g) => s + g.parcelas.length, 0)
+
+  document.getElementById('fim-body').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+      <span style="font-size:13px;color:var(--text2)"><strong>${grupos.length}</strong> compras · <strong>${totalLinhas}</strong> lançamentos a criar</span>
+      <div style="display:flex;gap:6px">
+        <button class="btn" onclick="fimAbrir()" style="border:1px solid var(--border2);color:var(--text2);font-size:12px;padding:6px 10px"><i class="ti ti-arrow-left"></i> Voltar</button>
+        <button class="btn btn-primary" onclick="fimConfirmar()" style="font-size:13px"><i class="ti ti-check"></i> Importar ${totalLinhas} lançamentos</button>
+      </div>
+    </div>
+    <p style="font-size:11px;color:var(--text3);margin-bottom:8px">Ajuste descrição, categoria e pessoa. Clique em × para remover uma compra. Os lançamentos são criados para cada parcela futura no mês correto.</p>
+    <div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead>
+        <tr style="background:var(--surface2);text-align:left">
+          <th style="padding:7px 8px;border-bottom:2px solid var(--border2);white-space:nowrap">Descrição</th>
+          <th style="padding:7px 8px;border-bottom:2px solid var(--border2);white-space:nowrap;text-align:right">R$/parc</th>
+          <th style="padding:7px 8px;border-bottom:2px solid var(--border2);white-space:nowrap">Cartão</th>
+          <th style="padding:7px 8px;border-bottom:2px solid var(--border2);white-space:nowrap;text-align:center">Parcelas</th>
+          <th style="padding:7px 8px;border-bottom:2px solid var(--border2);white-space:nowrap">Categoria</th>
+          <th style="padding:7px 8px;border-bottom:2px solid var(--border2);white-space:nowrap">Pessoa</th>
+          <th style="padding:7px 8px;border-bottom:2px solid var(--border2)"></th>
+        </tr>
+      </thead>
+      <tbody id="fim-tbody">
+      ${grupos.map((g, gi) => `
+        <tr id="fim-row-${gi}" style="border-bottom:1px solid var(--border)">
+          <td style="padding:7px 8px">
+            <input type="text" value="${escAttr(g.descricao)}" onchange="fimGrupos.filter(x=>!x.deletado)[${gi}].descricao=this.value.toUpperCase();this.value=this.value.toUpperCase()"
+              style="width:100%;min-width:140px;padding:4px 6px;border:1px solid var(--border2);border-radius:4px;font-size:11px" />
+            <div style="font-size:10px;color:var(--text3);margin-top:2px">${escAttr(g.parcelas.map(p=>FIN_MESES[parseInt(p.data.slice(5,7))-1]+'/'+p.data.slice(0,4)).join(', '))}</div>
+          </td>
+          <td style="padding:7px 8px;text-align:right;font-weight:600;white-space:nowrap;color:#C0392B">R$ ${fmtBR(g.valor)}</td>
+          <td style="padding:7px 8px">
+            <select onchange="fimGrupos.filter(x=>!x.deletado)[${gi}].cartao_id=this.value" style="padding:4px 6px;border:1px solid var(--border2);border-radius:4px;font-size:11px;max-width:120px">
+              ${cartaoOpts.replace(`value="${g.cartao_id}"`,`value="${g.cartao_id}" selected`)}
+            </select>
+            <div style="font-size:10px;color:var(--text3)">${escAttr(g.cartao_nome)}</div>
+          </td>
+          <td style="padding:7px 8px;text-align:center;white-space:nowrap">
+            <span style="font-size:11px;color:var(--text2)">${g.atual}→${g.total}</span><br>
+            <span style="font-size:10px;color:var(--text3)">${g.parcelas.length} a criar</span>
+          </td>
+          <td style="padding:7px 8px">
+            <select onchange="fimGrupos.filter(x=>!x.deletado)[${gi}].categoria_id=this.value" style="padding:4px 6px;border:1px solid var(--border2);border-radius:4px;font-size:11px;max-width:120px">
+              <option value="">Sem categoria</option>${catOpts.replace(`value="${g.categoria_id}"`,`value="${g.categoria_id}" selected`)}
+            </select>
+          </td>
+          <td style="padding:7px 8px">
+            <select onchange="fimGrupos.filter(x=>!x.deletado)[${gi}].pessoa_id=this.value||null" style="padding:4px 6px;border:1px solid var(--border2);border-radius:4px;font-size:11px;max-width:100px">
+              ${pessoaOpts.replace(`value="${g.pessoa_id||''}"`,`value="${g.pessoa_id||''}" selected`)}
+            </select>
+          </td>
+          <td style="padding:7px 4px;text-align:center">
+            <button onclick="fimRemoverGrupo(${gi})" style="background:none;border:none;color:#C0392B;cursor:pointer;font-size:16px;padding:4px" title="Remover">×</button>
+          </td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    </div>
+    <div style="margin-top:12px;display:flex;justify-content:flex-end">
+      <button class="btn btn-primary" onclick="fimConfirmar()" style="font-size:13px"><i class="ti ti-check"></i> Importar ${totalLinhas} lançamentos</button>
+    </div>
+    <div id="fim-prog" style="font-size:12px;color:var(--text2);margin-top:8px;text-align:center"></div>`
+}
+
+window.fimRemoverGrupo = (gi) => {
+  const grupos = fimGrupos.filter(g => !g.deletado)
+  if (gi >= 0 && gi < grupos.length) grupos[gi].deletado = true
+  fimRenderRevisao()
+}
+
+async function fimConfirmar() {
+  const grupos = fimGrupos.filter(g => !g.deletado)
+  if (!grupos.length) return
+  const prog = document.getElementById('fim-prog')
+  if (prog) prog.textContent = 'Importando...'
+
+  const rows = []
+  for (const g of grupos) {
+    for (const p of g.parcelas) {
+      rows.push({
+        id: uid(),
+        tipo: 'despesa',
+        descricao: g.descricao,
+        valor: g.valor,
+        data: p.data,
+        categoria_id: g.categoria_id || null,
+        forma: 'credito',
+        cartao_id: g.cartao_id || null,
+        pessoa_id: g.pessoa_id || null,
+        divisao: null,
+        parcela: { atual: p.num, total: g.total },
+        grupo_id: g.id,
+        fixa: false,
+        nota: null,
+      })
+    }
+  }
+
+  const BATCH = 50
+  for (let i = 0; i < rows.length; i += BATCH) {
+    const { error } = await supabase.from('fin_lancamentos').insert(rows.slice(i, i + BATCH))
+    if (error) { if (prog) prog.textContent = 'Erro: ' + error.message; return }
+  }
+
+  document.getElementById('modal-fim').style.display = 'none'
+  await finCarregarLancamentos()
+  finRenderMes()
+  alert(`✓ ${rows.length} lançamentos importados com sucesso!`)
+}
 </script>
 </body>
 </html>
