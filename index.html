@@ -2052,20 +2052,37 @@ function finAddMeses(dataStr, k) {
   return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`
 }
 
+// Se a data da compra cair após o fechamento do cartão, empurra para o 1º do mês seguinte
+function finAplicarFechamento(dataStr, cartaoId) {
+  if (!cartaoId || !dataStr) return dataStr
+  const cartao = finCartoes.find(c => c.id === cartaoId)
+  const fech = cartao?.dia_fechamento
+  if (!fech) return dataStr
+  const dia = parseInt(dataStr.slice(8, 10))
+  if (dia > fech) return finAddMeses(dataStr.slice(0,8) + '01', 1)
+  return dataStr
+}
+
 window.finAddLancamento = async () => {
   const fb = document.getElementById('fin-feedback')
   const desc = document.getElementById('fin-desc').value.trim()
   const valor = parseFloat(document.getElementById('fin-valor').value)
-  const dataBase = document.getElementById('fin-data').value
+  const dataBaseRaw = document.getElementById('fin-data').value
   const categoria_id = document.getElementById('fin-categoria').value || null
   const pessoa_id_raw = document.getElementById('fin-pessoa').value
   const pessoa_id = pessoa_id_raw && !pessoa_id_raw.startsWith('local-') ? pessoa_id_raw : null
-  if (!desc || !valor || valor <= 0 || !dataBase) { fb.innerHTML = '<span style="color:#C0392B">⚠ Preencha descrição, valor e data</span>'; return }
+  if (!desc || !valor || valor <= 0 || !dataBaseRaw) { fb.innerHTML = '<span style="color:#C0392B">⚠ Preencha descrição, valor e data</span>'; return }
 
   const ehDespesa = finTipo === 'despesa'
   const forma = ehDespesa ? document.getElementById('fin-forma').value : null
   const credito = ehDespesa && forma === 'credito'
   const cartao_id = credito ? (document.getElementById('fin-cartao').value || null) : null
+  // ajusta data pelo fechamento do cartão (compra após o dia X vai para o próximo mês)
+  const dataBase = finAplicarFechamento(dataBaseRaw, cartao_id)
+  if (dataBase !== dataBaseRaw) {
+    const [a,m] = dataBase.split('-')
+    fb.innerHTML = `<span style="color:#185FA5;font-size:11px">⚡ Fechamento: lançado em ${FIN_MESES[parseInt(m)-1]}/${a}</span>`
+  }
   const parcelado = credito && document.getElementById('fin-parcelado').checked
   const parcTotal = parcelado ? Math.max(2, parseInt(document.getElementById('fin-parc-total').value) || 2) : null
   const fixa = ehDespesa && document.getElementById('fin-fixa').checked
@@ -2538,7 +2555,7 @@ function fimProcessar() {
 
       } else if (modo === 'todas') {
         // ── À VISTA / SEM PARCELAMENTO ─────────────────────────────
-        const dataStr = fimDataTx(tx.data, mesBase, anoBase)
+        const dataStr = finAplicarFechamento(fimDataTx(tx.data, mesBase, anoBase), cartaoId)
         fimGrupos.push({
           id: crypto.randomUUID(), descricao: descUpper, valor: tx.valor,
           cartao_nome: fatura.nome, cartao_id: cartaoId,
