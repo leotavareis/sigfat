@@ -478,6 +478,8 @@
 
     <div class="fin-manage-row" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;flex-wrap:wrap">
       <button class="btn" onclick="fimAbrir()" style="border:1px solid #185FA5;color:#185FA5;background:#E6F1FB;font-size:12px;padding:6px 12px"><i class="ti ti-file-import"></i> <span class="txt-full">Importar parcelas do JSON</span><span class="txt-short">Importar</span></button>
+      <button class="btn" onclick="finInjetarParcelas()" style="border:1px solid #0F6E56;color:#0F6E56;background:#E1F5EE;font-size:12px;padding:6px 12px"><i class="ti ti-arrows-transfer-down"></i> <span class="txt-full">Injetar parcelas das faturas</span><span class="txt-short">Injetar</span></button>
+      <button class="btn" onclick="finLimparTudo()" style="border:1px solid #C0392B;color:#C0392B;background:#FBEAF0;font-size:12px;padding:6px 12px"><i class="ti ti-trash"></i> <span class="txt-full">Limpar lançamentos</span><span class="txt-short">Limpar</span></button>
       <button class="btn fin-manage-btn" onclick="trocarView('admin')" style="border:1px solid var(--border2);color:var(--text2);background:var(--surface);font-size:12px;padding:6px 12px"><i class="ti ti-settings"></i> <span class="txt-full">Gerenciar categorias, pessoas e cartões</span><span class="txt-short">Gerenciar</span></button>
     </div>
 
@@ -2017,6 +2019,71 @@ async function finCarregarCartoes() {
 async function finCarregarLancamentos() {
   const { data } = await supabase.from('fin_lancamentos').select('*').order('data', { ascending:false })
   finLancamentos = data || []
+}
+
+window.finLimparTudo = async () => {
+  if (!confirm('Apagar TODOS os lançamentos do módulo Finanças?\n\nEssa ação não pode ser desfeita.')) return
+  const { error } = await supabase.from('fin_lancamentos').delete().gte('data', '2000-01-01')
+  if (error) { alert('Erro ao limpar: ' + error.message); return }
+  finLancamentos = []
+  finRenderMes()
+  alert('Todos os lançamentos foram apagados.')
+}
+
+window.finInjetarParcelas = async () => {
+  if (!confirm('Injetar TODAS as parcelas detectadas nas faturas (Módulo 1) no módulo Finanças?\n\nIsso criará lançamentos de crédito para cada parcela encontrada.')) return
+
+  if (!finCartoes.length) await finCarregarCartoes()
+
+  // Busca todas as transações parceladas com dados da fatura
+  const { data: txs, error } = await supabase
+    .from('transacoes')
+    .select('*, faturas(nome_arquivo, mes_referencia)')
+    .not('parcela', 'is', null)
+
+  if (error) { alert('Erro ao buscar parcelas: ' + error.message); return }
+  if (!txs || txs.length === 0) { alert('Nenhuma transação parcelada encontrada nas faturas.'); return }
+
+  // Mapeia nome_arquivo da fatura → cartao_id por correspondência parcial
+  const mapCartao = (nomeArquivo) => {
+    if (!nomeArquivo || !finCartoes.length) return null
+    const lower = nomeArquivo.toLowerCase()
+    return finCartoes.find(c => lower.includes(c.nome.toLowerCase()))?.id || null
+  }
+
+  // Converte "MM/YYYY" → "YYYY-MM-01"
+  const mesRefParaData = (mesRef) => {
+    if (!mesRef) return new Date().toISOString().slice(0, 10)
+    const [m, a] = mesRef.split('/')
+    return `${a}-${m.padStart(2, '0')}-01`
+  }
+
+  const linhas = txs.map(tx => ({
+    tipo: 'despesa',
+    descricao: tx.descricao,
+    valor: tx.valor,
+    data: mesRefParaData(tx.faturas?.mes_referencia),
+    mes_fatura: null,
+    categoria_id: null,
+    forma: 'credito',
+    cartao_id: mapCartao(tx.faturas?.nome_arquivo),
+    pessoa_id: tx.pessoa_id || null,
+    divisao: tx.divisao || null,
+    parcela: tx.parcela,
+    grupo_id: null,
+    fixa: false,
+    nota: tx.nota || tx.descricao
+  }))
+
+  let inseridos = 0
+  for (let i = 0; i < linhas.length; i += 100) {
+    const { error: errIns } = await supabase.from('fin_lancamentos').insert(linhas.slice(i, i + 100))
+    if (!errIns) inseridos += Math.min(100, linhas.length - i)
+  }
+
+  await finCarregarLancamentos()
+  finRenderMes()
+  alert(`✓ ${inseridos} parcelas injetadas no módulo Finanças.`)
 }
 
 function finPopularSelects() {
