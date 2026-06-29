@@ -2915,8 +2915,8 @@ function fimProcessar() {
         const { atual, total } = tx.parcela
         if (total - atual <= 0) continue  // última parcela, ignora
 
-        // tx.valor é o total da compra; valor por parcela = total ÷ nº parcelas
-        const valorParc = Number((tx.valor / total).toFixed(2))
+        // tx.valor já é o valor da parcela (confirmado contra a fatura real do banco); NÃO dividir por total
+        const valorParc = Number(tx.valor)
 
         // busca memória com o valor da parcela (igual ao que aparece na fatura do módulo 1)
         const chaveParc = `${(tx.descricao||'').toLowerCase().trim()}|${valorParc.toFixed(2)}`
