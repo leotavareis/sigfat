@@ -2794,8 +2794,6 @@ function fimProcessar() {
 
     for (const tx of (fatura.transacoes || [])) {
       const descUpper = (tx.descricao || '').toUpperCase()
-      const chave = `${(tx.descricao||'').toLowerCase().trim()}|${Number(tx.valor).toFixed(2)}`
-      const mem = memoria[chave] || null
 
       if (tx.parcela) {
         // ── PARCELADA ──────────────────────────────────────────────
@@ -2804,6 +2802,10 @@ function fimProcessar() {
 
         // tx.valor é o total da compra; valor por parcela = total ÷ nº parcelas
         const valorParc = Number((tx.valor / total).toFixed(2))
+
+        // busca memória com o valor da parcela (igual ao que aparece na fatura do módulo 1)
+        const chaveParc = `${(tx.descricao||'').toLowerCase().trim()}|${valorParc.toFixed(2)}`
+        const mem = memoria[chaveParc] || null
 
         const grupoId = crypto.randomUUID()
         const parcs = []
@@ -2816,22 +2818,26 @@ function fimProcessar() {
         fimGrupos.push({
           id: grupoId, descricao: descUpper, valor: valorParc,
           cartao_nome: fatura.nome, cartao_id: cartaoId,
-          categoria_id: mem ? '' : fimSugerirCategoria(tx.descricao),
+          categoria_id: fimSugerirCategoria(tx.descricao),
           pessoa_id: mem?.pessoa_id || null,
+          divisao: mem?.divisao || null,
           parcelas: parcs, atual, total, deletado: false,
         })
 
       } else if (modo === 'todas') {
         // ── À VISTA / SEM PARCELAMENTO ─────────────────────────────
-        const dataReal = fimDataTx(tx.data, mesBase, anoBase)           // data real da transação (ex: 2026-06-22)
-        const mesFatura = finAplicarFechamento(dataReal, cartaoId)       // mês de cobrança (pode ser próximo mês)
+        const chaveAV = `${(tx.descricao||'').toLowerCase().trim()}|${Number(tx.valor).toFixed(2)}`
+        const memAV = memoria[chaveAV] || null
+        const dataReal = fimDataTx(tx.data, mesBase, anoBase)
+        const mesFatura = finAplicarFechamento(dataReal, cartaoId)
         fimGrupos.push({
           id: crypto.randomUUID(), descricao: descUpper, valor: tx.valor,
           cartao_nome: fatura.nome, cartao_id: cartaoId,
-          categoria_id: mem ? '' : fimSugerirCategoria(tx.descricao),
-          pessoa_id: mem?.pessoa_id || null,
+          categoria_id: fimSugerirCategoria(tx.descricao),
+          pessoa_id: memAV?.pessoa_id || null,
+          divisao: memAV?.divisao || null,
           data_real: dataReal,
-          mes_fatura: mesFatura !== dataReal ? mesFatura : null,         // só preenche se mudou de mês
+          mes_fatura: mesFatura !== dataReal ? mesFatura : null,
           parcelas: [{ num: null, data: dataReal }],
           atual: null, total: null, deletado: false,
         })
@@ -2938,8 +2944,8 @@ async function fimConfirmar() {
         categoria_id: g.categoria_id || null,
         forma: 'credito',
         cartao_id: g.cartao_id || null,
-        pessoa_id: g.pessoa_id || null,
-        divisao: null,
+        pessoa_id: g.divisao ? null : (g.pessoa_id || null),
+        divisao: g.divisao || null,
         fixa: false,
         nota: null,
       }
