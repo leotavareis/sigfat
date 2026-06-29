@@ -2345,6 +2345,19 @@ function finRenderMes() {
       porPessoa[l.pessoa_id] = (porPessoa[l.pessoa_id] || 0) + Number(l.valor)
     }
   })
+  // Saldo líquido projetado: "se todo mundo me pagar o que deve, como ficam minhas contas".
+  // EU (pessoas[0]) nunca entra como "a receber" — suas despesas já estão em `resultado`.
+  const euId = pessoas[0]?.id
+  const aReceber = Object.keys(porPessoa)
+    .filter(pid => pid !== euId)
+    .reduce((s, pid) => s + porPessoa[pid], 0)
+  const saldoLiquidoProjetado = resultado + aReceber
+  if (aReceber > 0) {
+    document.getElementById('fin-totais').innerHTML += `
+    <div class="fin-tot-card" style="background:#E6F1FB"><div class="lbl">A receber</div><div class="val" style="color:#185FA5">R$ ${fmtBR(aReceber)}</div></div>
+    <div class="fin-tot-card" style="background:${saldoLiquidoProjetado>=0?'#E6F1FB':'#FAECE7'}"><div class="lbl">Saldo projetado</div><div class="val" style="color:${saldoLiquidoProjetado>=0?'#185FA5':'#C0392B'}">R$ ${fmtBR(saldoLiquidoProjetado)}</div></div>`
+  }
+
   const pessoaChaves = Object.keys(porPessoa).sort((a,b) => porPessoa[b] - porPessoa[a])
   document.getElementById('fin-por-pessoa-box').innerHTML = pessoaChaves.length ? `
     <div class="fin-sec-title" style="display:flex;justify-content:space-between;align-items:center">
