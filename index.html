@@ -135,6 +135,7 @@
   <div style="display:flex;align-items:center;gap:14px">
     <div class="header-nav">
       <button class="header-nav-btn active" id="hnav-nova" onclick="trocarView('nova')"><i class="ti ti-home"></i> Início</button>
+      <button class="header-nav-btn" id="hnav-lancar" onclick="trocarView('lancar')"><i class="ti ti-plus"></i> Lançar</button>
       <button class="header-nav-btn" id="hnav-fin" onclick="trocarView('financas')"><i class="ti ti-wallet"></i> Finanças</button>
       <button class="header-nav-btn" id="hnav-hist" onclick="trocarView('historico')"><i class="ti ti-history"></i> Histórico</button>
       <button class="header-nav-btn" id="hnav-admin" onclick="trocarView('admin')"><i class="ti ti-settings"></i> Admin</button>
@@ -148,7 +149,7 @@
   <button class="fnav-btn active" id="fnav-nova" onclick="trocarView('nova')"><i class="ti ti-home"></i><span>Início</span></button>
   <button class="fnav-btn" id="fnav-fin" onclick="trocarView('financas')"><i class="ti ti-wallet"></i><span>Finanças</span></button>
   <button class="fnav-btn" id="fnav-hist" onclick="trocarView('historico')"><i class="ti ti-history"></i><span>Histórico</span></button>
-  <button class="fnav-btn" onclick="abrirModalManual()"><i class="ti ti-plus"></i><span>Adicionar</span></button>
+  <button class="fnav-btn" id="fnav-lancar" onclick="trocarView('lancar')"><i class="ti ti-plus"></i><span>Lançar</span></button>
   <button class="fnav-btn" onclick="window.scrollTo({top:0,behavior:'smooth'})"><i class="ti ti-arrow-up"></i><span>Topo</span></button>
 </div>
 
@@ -461,7 +462,7 @@
     .fin-tipo-btn.active.receita { background:#27AE60; color:#fff; border-color:#27AE60; }
     .fin-grid { display:flex; gap:8px; flex-wrap:wrap; }
     .fin-grid > * { flex:1; min-width:130px; }
-    #view-financas input, #view-financas select { padding:9px 12px; border:1px solid var(--border2); border-radius:var(--radius-sm); font-size:14px; color:var(--text); background:var(--surface); box-sizing:border-box; width:100%; outline:none; }
+    #view-financas input, #view-financas select, #view-lancar input, #view-lancar select { padding:9px 12px; border:1px solid var(--border2); border-radius:var(--radius-sm); font-size:14px; color:var(--text); background:var(--surface); box-sizing:border-box; width:100%; outline:none; }
     .fin-forma-row { display:flex; align-items:center; gap:8px; }
     .fin-forma-row label { font-size:13px; color:var(--text2); white-space:nowrap; }
     .fin-check { display:flex; align-items:center; gap:6px; font-size:13px; color:var(--text2); cursor:pointer; }
@@ -473,15 +474,17 @@
     .fin-lanc-row { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); }
     .fin-cat-bar { height:8px; border-radius:4px; }
     .fin-sec-title { font-size:13px; font-weight:600; color:var(--text); margin-bottom:8px; }
+    /* ─── Barra de filtros do resumo ─────────────────────────────────────── */
+    .fin-filtros { position:sticky; top:0; z-index:30; background:var(--bg); border:1px solid var(--border2); border-radius:12px; padding:10px 12px; margin-bottom:12px; display:flex; flex-direction:column; gap:8px; }
+    .fin-busca { width:100%; box-sizing:border-box; }
+    .fin-filtro-grupo { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+    .fin-filtro-lbl { font-size:11px; color:var(--text3); text-transform:uppercase; letter-spacing:.5px; margin-right:4px; min-width:54px; }
+    .fin-chip { border:1px solid var(--border2); background:var(--surface); color:var(--text2); border-radius:14px; padding:5px 11px; font-size:12px; cursor:pointer; line-height:1; white-space:nowrap; }
+    .fin-chip.ativo { background:var(--chip,#185FA5); border-color:var(--chip,#185FA5); color:#fff; }
+    .fin-filtros-foot { display:flex; justify-content:flex-end; }
+    .fin-filtros-foot button { background:none; border:none; color:#185FA5; font-size:12px; cursor:pointer; padding:2px 4px; }
   </style>
-  <div id="view-financas" class="view">
-
-    <div class="fin-manage-row" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;flex-wrap:wrap">
-      <button class="btn" onclick="fimAbrir()" style="border:1px solid #185FA5;color:#185FA5;background:#E6F1FB;font-size:12px;padding:6px 12px"><i class="ti ti-file-import"></i> <span class="txt-full">Importar parcelas do JSON</span><span class="txt-short">Importar</span></button>
-      <button class="btn" onclick="finInjetarParcelas()" style="border:1px solid #0F6E56;color:#0F6E56;background:#E1F5EE;font-size:12px;padding:6px 12px"><i class="ti ti-arrows-transfer-down"></i> <span class="txt-full">Injetar parcelas das faturas</span><span class="txt-short">Injetar</span></button>
-      <button class="btn" onclick="finLimparTudo()" style="border:1px solid #C0392B;color:#C0392B;background:#FBEAF0;font-size:12px;padding:6px 12px"><i class="ti ti-trash"></i> <span class="txt-full">Limpar lançamentos</span><span class="txt-short">Limpar</span></button>
-      <button class="btn fin-manage-btn" onclick="trocarView('admin')" style="border:1px solid var(--border2);color:var(--text2);background:var(--surface);font-size:12px;padding:6px 12px"><i class="ti ti-settings"></i> <span class="txt-full">Gerenciar categorias, pessoas e cartões</span><span class="txt-short">Gerenciar</span></button>
-    </div>
+  <div id="view-lancar" class="view">
 
     <!-- Lançamento rápido -->
     <div class="card">
@@ -550,6 +553,25 @@
         <button class="btn btn-primary" onclick="finAddLancamento()"><i class="ti ti-plus"></i> Adicionar</button>
         <span id="fin-feedback" style="font-size:12px"></span>
       </div>
+    </div>
+  </div><!-- /view-lancar -->
+
+  <div id="view-financas" class="view">
+
+    <div class="fin-manage-row" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:8px;flex-wrap:wrap">
+      <button class="btn" onclick="fimAbrir()" style="border:1px solid #185FA5;color:#185FA5;background:#E6F1FB;font-size:12px;padding:6px 12px"><i class="ti ti-file-import"></i> <span class="txt-full">Importar parcelas do JSON</span><span class="txt-short">Importar</span></button>
+      <button class="btn" onclick="finInjetarParcelas()" style="border:1px solid #0F6E56;color:#0F6E56;background:#E1F5EE;font-size:12px;padding:6px 12px"><i class="ti ti-arrows-transfer-down"></i> <span class="txt-full">Injetar parcelas das faturas</span><span class="txt-short">Injetar</span></button>
+      <button class="btn" onclick="finLimparTudo()" style="border:1px solid #C0392B;color:#C0392B;background:#FBEAF0;font-size:12px;padding:6px 12px"><i class="ti ti-trash"></i> <span class="txt-full">Limpar lançamentos</span><span class="txt-short">Limpar</span></button>
+      <button class="btn fin-manage-btn" onclick="trocarView('admin')" style="border:1px solid var(--border2);color:var(--text2);background:var(--surface);font-size:12px;padding:6px 12px"><i class="ti ti-settings"></i> <span class="txt-full">Gerenciar categorias, pessoas e cartões</span><span class="txt-short">Gerenciar</span></button>
+    </div>
+
+    <!-- Barra de filtros (sticky) -->
+    <div id="fin-filtros" class="fin-filtros">
+      <input type="text" id="fin-busca" class="fin-busca" placeholder="Buscar por descrição..." oninput="finOnBusca(this.value)" />
+      <div class="fin-filtro-grupo" id="fin-filtro-pessoa"></div>
+      <div class="fin-filtro-grupo" id="fin-filtro-cartao"></div>
+      <div class="fin-filtro-grupo" id="fin-filtro-categoria"></div>
+      <div class="fin-filtros-foot"><button onclick="finLimparFiltros()"><i class="ti ti-x"></i> Limpar filtros</button></div>
     </div>
 
     <!-- Painel do mês -->
@@ -637,6 +659,23 @@
 
     @media (max-width:380px) {
       .fin-tot-card .val { font-size:14px; }
+    }
+
+    /* ─── Tela dedicada de lançamento (#view-lancar) ──────────────────────── */
+    @media (max-width:768px) {
+      #view-lancar input, #view-lancar select { font-size:16px; min-height:46px; }
+      #view-lancar .step-sub { font-size:12px; line-height:1.35; }
+      #view-lancar .fin-tipo-btn { padding:13px; font-size:15px; }
+      #view-lancar .fin-grid { gap:10px; }
+      #view-lancar #fin-desc { flex-basis:100%; }
+      #view-lancar #fin-valor { flex-basis:100%; font-size:20px; font-weight:700; text-align:right; height:52px; }
+      #view-lancar .btn-primary { width:100%; justify-content:center; padding:14px; font-size:16px; font-weight:600; }
+      /* filtros do resumo confortáveis no toque */
+      #view-financas .fin-chip { padding:7px 13px; font-size:13px; }
+      #view-financas .fin-busca { min-height:44px; font-size:16px; }
+    }
+    @media (max-width:480px) {
+      #view-lancar .fin-grid > * { flex-basis:100%; min-width:0; }
     }
   </style>
   <div id="view-admin" class="view">
@@ -1378,19 +1417,22 @@ function renderResumo() {
 window.trocarView = (v) => {
   document.getElementById('view-nova').classList.toggle('active', v==='nova')
   document.getElementById('view-historico').classList.toggle('active', v==='historico')
+  document.getElementById('view-lancar').classList.toggle('active', v==='lancar')
   document.getElementById('view-financas').classList.toggle('active', v==='financas')
   document.getElementById('view-admin').classList.toggle('active', v==='admin')
   // Sincronizar estados ativos de todas as barras
   document.getElementById('hnav-nova')?.classList.toggle('active', v==='nova')
+  document.getElementById('hnav-lancar')?.classList.toggle('active', v==='lancar')
   document.getElementById('hnav-fin')?.classList.toggle('active', v==='financas')
   document.getElementById('hnav-hist')?.classList.toggle('active', v==='historico')
   document.getElementById('hnav-admin')?.classList.toggle('active', v==='admin')
   document.getElementById('fnav-nova')?.classList.toggle('active', v==='nova')
+  document.getElementById('fnav-lancar')?.classList.toggle('active', v==='lancar')
   document.getElementById('fnav-fin')?.classList.toggle('active', v==='financas')
   document.getElementById('fnav-hist')?.classList.toggle('active', v==='historico')
   document.querySelectorAll('.nav-tab').forEach((t,i) => t.classList.toggle('active', (i===0&&v==='nova')||(i===1&&v==='historico')))
   if (v==='historico') carregarHistorico()
-  if (v==='financas') finAbrir()
+  if (v==='financas' || v==='lancar') finAbrir()
   if (v==='admin') adminAbrir()
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
@@ -1990,6 +2032,8 @@ document.addEventListener('click', e => { if (e.target.id === 'modal-manual') fe
 // ════════════════════════════════════════════════════════════════════════════
 let finCategorias = [], finCartoes = [], finLancamentos = []
 let finTipo = 'despesa', finDivisaoPids = [], finCarregado = false
+// Estado dos filtros do resumo (#financas). Conjuntos de ids + texto livre.
+let finFiltro = { pessoas: new Set(), cartoes: new Set(), categorias: new Set(), texto: '' }
 const _hojeFin = new Date()
 let finAno = _hojeFin.getFullYear(), finMes = _hojeFin.getMonth() + 1
 const FIN_MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
@@ -2005,6 +2049,7 @@ async function finAbrir() {
     if (di && !di.value) di.value = new Date().toISOString().slice(0,10)
   }
   await finCarregarLancamentos()
+  finRenderFiltros()
   finRenderMes()
 }
 
@@ -2257,17 +2302,82 @@ window.finMudarMes = (delta) => {
 
 function finDoMes() {
   const prefixo = `${finAno}-${String(finMes).padStart(2,'0')}`
-  // mes_fatura: mês de cobrança (ex: julho para uma compra feita em junho pós-fechamento)
-  // se mes_fatura estiver preenchido, usa ele para filtrar; senão usa data
+  // competência = COALESCE(mes_fatura, data) — mesma regra usada no banco.
+  // mes_fatura (DATE) tem prioridade; senão cai para a data real do lançamento.
   return finLancamentos.filter(l => {
-    const ref = l.mes_fatura || l.data || ''
-    return ref.startsWith(prefixo)
+    const competencia = l.mes_fatura || l.data || ''
+    return competencia.startsWith(prefixo)
   })
+}
+
+// Aplica os filtros ativos (pessoa/cartão/categoria/texto) sobre um conjunto de lançamentos.
+function finFiltrar(lancs) {
+  const f = finFiltro
+  if (!f.pessoas.size && !f.cartoes.size && !f.categorias.size && !f.texto) return lancs
+  return lancs.filter(l => {
+    if (f.texto && !(l.descricao || '').toLowerCase().includes(f.texto)) return false
+    if (f.cartoes.size && !f.cartoes.has(l.cartao_id || '')) return false
+    if (f.categorias.size && !f.categorias.has(l.categoria_id || '')) return false
+    if (f.pessoas.size) {
+      const pids = (l.divisao && l.divisao.length)
+        ? l.divisao.map(d => d.pessoa_id)
+        : (l.pessoa_id ? [l.pessoa_id] : [])
+      if (!pids.some(p => f.pessoas.has(p))) return false
+    }
+    return true
+  })
+}
+
+// ─── FILTROS DO RESUMO (chips + busca + URL) ─────────────────────────────────
+function finRenderFiltros() {
+  const chip = (tipo, id, nome, ativo, cor) =>
+    `<button class="fin-chip${ativo ? ' ativo' : ''}" onclick="finToggleFiltro('${tipo}','${id}')"${cor ? ` style="--chip:${cor}"` : ''}>${nome}</button>`
+  const pBox = document.getElementById('fin-filtro-pessoa')
+  if (pBox) pBox.innerHTML = `<span class="fin-filtro-lbl">Pessoa</span>` +
+    pessoas.filter(p => p.id).map(p => chip('pessoa', p.id, p.nome, finFiltro.pessoas.has(p.id), p.cor)).join('')
+  const cBox = document.getElementById('fin-filtro-cartao')
+  if (cBox) cBox.innerHTML = `<span class="fin-filtro-lbl">Cartão</span>` +
+    finCartoes.map(c => chip('cartao', c.id, c.nome, finFiltro.cartoes.has(c.id), c.cor)).join('')
+  const catBox = document.getElementById('fin-filtro-categoria')
+  if (catBox) catBox.innerHTML = `<span class="fin-filtro-lbl">Categoria</span>` +
+    finCategorias.map(c => chip('categoria', c.id, c.nome, finFiltro.categorias.has(c.id), c.cor)).join('')
+  const busca = document.getElementById('fin-busca')
+  if (busca && busca.value !== finFiltro.texto) busca.value = finFiltro.texto
+}
+
+window.finToggleFiltro = (tipo, id) => {
+  const set = tipo === 'pessoa' ? finFiltro.pessoas : tipo === 'cartao' ? finFiltro.cartoes : finFiltro.categorias
+  if (set.has(id)) set.delete(id); else set.add(id)
+  finRenderFiltros(); finRenderMes(); finSyncURL()
+}
+window.finOnBusca = (v) => { finFiltro.texto = (v || '').toLowerCase(); finRenderMes(); finSyncURL() }
+window.finLimparFiltros = () => {
+  finFiltro = { pessoas: new Set(), cartoes: new Set(), categorias: new Set(), texto: '' }
+  finRenderFiltros(); finRenderMes(); finSyncURL()
+}
+
+// Reflete o estado dos filtros no hash da URL (ex: #financas?pessoa=id1,id2&q=mercado)
+function finSyncURL() {
+  const p = new URLSearchParams()
+  if (finFiltro.pessoas.size) p.set('pessoa', [...finFiltro.pessoas].join(','))
+  if (finFiltro.cartoes.size) p.set('cartao', [...finFiltro.cartoes].join(','))
+  if (finFiltro.categorias.size) p.set('categoria', [...finFiltro.categorias].join(','))
+  if (finFiltro.texto) p.set('q', finFiltro.texto)
+  const qs = p.toString()
+  history.replaceState(null, '', '#financas' + (qs ? '?' + qs : ''))
+}
+
+// Carrega o estado dos filtros a partir de uma querystring (URLSearchParams)
+function finFiltroFromParams(params) {
+  finFiltro.pessoas = new Set((params.get('pessoa') || '').split(',').filter(Boolean))
+  finFiltro.cartoes = new Set((params.get('cartao') || '').split(',').filter(Boolean))
+  finFiltro.categorias = new Set((params.get('categoria') || '').split(',').filter(Boolean))
+  finFiltro.texto = (params.get('q') || '').toLowerCase()
 }
 
 function finRenderMes() {
   document.getElementById('fin-mes-label').textContent = `${FIN_MESES[finMes-1]} ${finAno}`
-  const lancs = finDoMes()
+  const lancs = finFiltrar(finDoMes())
   const receitas = lancs.filter(l => l.tipo==='receita').reduce((s,l) => s + Number(l.valor), 0)
   const despesas = lancs.filter(l => l.tipo==='despesa').reduce((s,l) => s + Number(l.valor), 0)
   const resultado = receitas - despesas
@@ -2369,7 +2479,7 @@ function finRowHTML(l) {
 }
 
 window.finMostrarResumo = function() {
-  const lancs = finDoMes()
+  const lancs = finFiltrar(finDoMes())
   const mes = `${FIN_MESES[finMes-1]} ${finAno}`
 
   // calcular totais por pessoa
@@ -2765,10 +2875,15 @@ document.addEventListener('input', e => {
 
 // ─── ROTEAMENTO POR HASH (atalho p/ abrir direto como app no celular) ─────────
 function routeHash() {
-  const h = (location.hash || '').replace('#','').toLowerCase()
-  if (h === 'financas' || h === 'lancar' || h === 'lancamentos') trocarView('financas')
+  const raw = (location.hash || '').replace(/^#/, '')
+  const [path, query] = raw.split('?')
+  const h = (path || '').toLowerCase()
+  const params = new URLSearchParams(query || '')
+  if (h === 'financas' || h === 'lancamentos') { finFiltroFromParams(params); trocarView('financas') }
+  else if (h === 'lancar') trocarView('lancar')
   else if (h === 'admin') trocarView('admin')
   else if (h === 'historico') trocarView('historico')
+  else if (h === 'nova') trocarView('nova')
 }
 window.addEventListener('hashchange', routeHash)
 
