@@ -132,7 +132,8 @@ CREATE TABLE IF NOT EXISTS fin_lancamentos (
   tipo TEXT NOT NULL,                 -- 'receita' | 'despesa'
   descricao TEXT NOT NULL,
   valor NUMERIC(10,2) NOT NULL,
-  data DATE NOT NULL,                 -- competência (mês a que pertence)
+  data DATE NOT NULL,                 -- data real da transação
+  mes_fatura DATE,                    -- 1º dia do mês de cobrança (quando difere de data; NULL = usa data)
   categoria_id UUID REFERENCES fin_categorias(id) ON DELETE SET NULL,
   forma TEXT,                         -- 'dinheiro'|'debito'|'credito'|'pix'
   cartao_id UUID REFERENCES fin_cartoes(id) ON DELETE SET NULL,
@@ -148,6 +149,10 @@ ALTER TABLE fin_lancamentos ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "acesso_publico_fin_lancamentos" ON fin_lancamentos FOR ALL USING (true) WITH CHECK (true);
 CREATE INDEX IF NOT EXISTS idx_fin_lanc_data ON fin_lancamentos(data);
 CREATE INDEX IF NOT EXISTS idx_fin_lanc_grupo ON fin_lancamentos(grupo_id);
+
+-- Adiciona mes_fatura se já existe a tabela (migração)
+ALTER TABLE fin_lancamentos ADD COLUMN IF NOT EXISTS mes_fatura DATE;
+CREATE INDEX IF NOT EXISTS idx_fin_lanc_mes_fatura ON fin_lancamentos(mes_fatura);
 
 -- Categorias padrão
 INSERT INTO fin_categorias (nome, tipo, cor, icone, posicao) VALUES

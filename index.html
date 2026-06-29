@@ -2113,11 +2113,12 @@ window.finAddLancamento = async () => {
   const forma = ehDespesa ? document.getElementById('fin-forma').value : null
   const credito = ehDespesa && forma === 'credito'
   const cartao_id = credito ? (document.getElementById('fin-cartao').value || null) : null
-  // ajusta data pelo fechamento do cartão (compra após o dia X vai para o próximo mês)
-  const dataBase = finAplicarFechamento(dataBaseRaw, cartao_id)
-  if (dataBase !== dataBaseRaw) {
-    const [a,m] = dataBase.split('-')
-    fb.innerHTML = `<span style="color:#185FA5;font-size:11px">⚡ Fechamento: lançado em ${FIN_MESES[parseInt(m)-1]}/${a}</span>`
+  // data real = data digitada; mes_fatura = mês de cobrança (pode ser o próximo por fechamento)
+  const mesFaturaCalc = credito ? finAplicarFechamento(dataBaseRaw, cartao_id) : dataBaseRaw
+  const mesFatura = (mesFaturaCalc !== dataBaseRaw) ? mesFaturaCalc : null
+  if (mesFatura) {
+    const [a,m] = mesFatura.split('-')
+    fb.innerHTML = `<span style="color:#185FA5;font-size:11px">⚡ Fechamento: entra na fatura de ${FIN_MESES[parseInt(m)-1]}/${a}</span>`
   }
   const parcelado = credito && document.getElementById('fin-parcelado').checked
   const parcTotal = parcelado ? Math.max(2, parseInt(document.getElementById('fin-parc-total').value) || 2) : null
@@ -2135,19 +2136,25 @@ window.finAddLancamento = async () => {
   const grupo_id = (parcelado || fixa) ? crypto.randomUUID() : null
   const linhas = []
 
+  // base para calcular datas das parcelas: usa mês de cobrança (após fechamento) ou data digitada
+  const dataBase = mesFatura ? mesFatura.slice(0,8) + dataBaseRaw.slice(8) : dataBaseRaw
+
   if (parcelado) {
     // valor digitado = total; divide igualmente entre as parcelas
     const vp = valor / parcTotal
     for (let k = 1; k <= parcTotal; k++) {
       const v = k === parcTotal ? Number((valor - vp*(parcTotal-1)).toFixed(2)) : Number(vp.toFixed(2))
-      linhas.push({ tipo:'despesa', descricao:desc, valor:v, data:finAddMeses(dataBase, k-1), categoria_id, forma, cartao_id, pessoa_id: fazerDivisao?null:pessoa_id, divisao: fazerDivisao?montarDivisao(v):null, parcela:{ atual:k, total:parcTotal }, grupo_id, fixa:false, nota:desc })
+      // data = 1º do mês de cada parcela; mes_fatura = null (data já é o mês certo)
+      const dataParcela = finAddMeses(mesFaturaCalc.slice(0,8) + '01', k-1)
+      linhas.push({ tipo:'despesa', descricao:desc, valor:v, data:dataParcela, mes_fatura:null, categoria_id, forma, cartao_id, pessoa_id: fazerDivisao?null:pessoa_id, divisao: fazerDivisao?montarDivisao(v):null, parcela:{ atual:k, total:parcTotal }, grupo_id, fixa:false, nota:desc })
     }
   } else if (fixa) {
     for (let k = 0; k < fixaMeses; k++) {
-      linhas.push({ tipo:'despesa', descricao:desc, valor, data:finAddMeses(dataBase, k), categoria_id, forma, cartao_id, pessoa_id: fazerDivisao?null:pessoa_id, divisao: fazerDivisao?montarDivisao(valor):null, parcela:null, grupo_id, fixa:true, nota:desc })
+      linhas.push({ tipo:'despesa', descricao:desc, valor, data:finAddMeses(dataBase, k), mes_fatura:null, categoria_id, forma, cartao_id, pessoa_id: fazerDivisao?null:pessoa_id, divisao: fazerDivisao?montarDivisao(valor):null, parcela:null, grupo_id, fixa:true, nota:desc })
     }
   } else {
-    linhas.push({ tipo:finTipo, descricao:desc, valor, data:dataBase, categoria_id, forma, cartao_id, pessoa_id: fazerDivisao?null:pessoa_id, divisao: fazerDivisao?montarDivisao(valor):null, parcela:null, grupo_id:null, fixa:false, nota:desc })
+    // data = data real da transação; mes_fatura = mês de cobrança se diferente
+    linhas.push({ tipo:finTipo, descricao:desc, valor, data:dataBaseRaw, mes_fatura:mesFatura, categoria_id, forma, cartao_id, pessoa_id: fazerDivisao?null:pessoa_id, divisao: fazerDivisao?montarDivisao(valor):null, parcela:null, grupo_id:null, fixa:false, nota:desc })
   }
 
   fb.innerHTML = '<span style="color:var(--text3)">Salvando...</span>'
@@ -2183,7 +2190,12 @@ window.finMudarMes = (delta) => {
 
 function finDoMes() {
   const prefixo = `${finAno}-${String(finMes).padStart(2,'0')}`
-  return finLancamentos.filter(l => (l.data || '').startsWith(prefixo))
+  // mes_fatura: mês de cobrança (ex: julho para uma compra feita em junho pós-fechamento)
+  // se mes_fatura estiver preenchido, usa ele para filtrar; senão usa data
+  return finLancamentos.filter(l => {
+    const ref = l.mes_fatura || l.data || ''
+    return ref.startsWith(prefixo)
+  })
 }
 
 function finRenderMes() {
@@ -2811,13 +2823,16 @@ function fimProcessar() {
 
       } else if (modo === 'todas') {
         // ── À VISTA / SEM PARCELAMENTO ─────────────────────────────
-        const dataStr = finAplicarFechamento(fimDataTx(tx.data, mesBase, anoBase), cartaoId)
+        const dataReal = fimDataTx(tx.data, mesBase, anoBase)           // data real da transação (ex: 2026-06-22)
+        const mesFatura = finAplicarFechamento(dataReal, cartaoId)       // mês de cobrança (pode ser próximo mês)
         fimGrupos.push({
           id: crypto.randomUUID(), descricao: descUpper, valor: tx.valor,
           cartao_nome: fatura.nome, cartao_id: cartaoId,
           categoria_id: mem ? '' : fimSugerirCategoria(tx.descricao),
           pessoa_id: mem?.pessoa_id || null,
-          parcelas: [{ num: null, data: dataStr }],
+          data_real: dataReal,
+          mes_fatura: mesFatura !== dataReal ? mesFatura : null,         // só preenche se mudou de mês
+          parcelas: [{ num: null, data: dataReal }],
           atual: null, total: null, deletado: false,
         })
       }
@@ -2918,7 +2933,8 @@ async function fimConfirmar() {
         tipo: 'despesa',
         descricao: g.descricao,
         valor: g.valor,
-        data: p.data,
+        data: p.data,                           // data real da transação
+        mes_fatura: g.mes_fatura || null,       // mês de cobrança quando difere da data real
         categoria_id: g.categoria_id || null,
         forma: 'credito',
         cartao_id: g.cartao_id || null,
@@ -2930,6 +2946,7 @@ async function fimConfirmar() {
       if (g.total) {
         row.parcela = { atual: p.num, total: g.total }
         row.grupo_id = g.id
+        row.mes_fatura = null  // parcelas já têm data = 1º do mês correto, sem necessidade de mes_fatura
       }
       rows.push(row)
     }
