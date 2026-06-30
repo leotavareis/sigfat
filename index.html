@@ -2830,6 +2830,8 @@ function routeHash() {
   else if (h === 'admin') trocarView('admin')
   else if (h === 'historico') trocarView('historico')
   else if (h === 'nova') trocarView('nova')
+  // iOS ignora o # do start_url — detecta pelo query param ?app=1 e abre em Lançar
+  else if (new URLSearchParams(location.search).get('app') === '1') trocarView('lancar')
 }
 window.addEventListener('hashchange', routeHash)
 
