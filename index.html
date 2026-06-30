@@ -484,74 +484,136 @@
     .fin-filtros-foot { display:flex; justify-content:flex-end; }
     .fin-filtros-foot button { background:none; border:none; color:#185FA5; font-size:12px; cursor:pointer; padding:2px 4px; }
   </style>
+  <style>
+    /* ─── Tela Lançar redesenhada ──────────────────────────────────────────── */
+    #view-lancar .lc-card { background:#fff; border:1px solid var(--border); border-radius:16px; overflow:hidden; box-shadow:var(--shadow); margin-bottom:1.25rem; }
+    #view-lancar .lc-hd { padding:14px 16px 16px; color:#fff; transition:background .2s; }
+    #view-lancar .lc-tgl { display:flex; background:rgba(255,255,255,.18); border-radius:11px; padding:4px; gap:4px; margin-bottom:12px; }
+    #view-lancar .lc-tgl-btn { flex:1; border:none; background:transparent; color:rgba(255,255,255,.9); font-size:13px; font-weight:600; padding:9px 0; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; }
+    #view-lancar .lc-tgl-btn.on { background:#fff; }
+    #view-lancar #fin-tipo-despesa.on { color:#C0392B; }
+    #view-lancar #fin-tipo-receita.on { color:#1E8449; }
+    #view-lancar .lc-vlbl { font-size:11px; color:rgba(255,255,255,.82); text-transform:uppercase; letter-spacing:.05em; }
+    #view-lancar .lc-valrow { display:flex; align-items:baseline; gap:7px; margin-top:2px; }
+    #view-lancar .lc-valrow .cur { font-size:17px; font-weight:600; color:#fff; opacity:.9; }
+    #view-lancar #fin-valor { background:transparent!important; border:none!important; color:#fff!important; font-size:32px!important; font-weight:700!important; width:100%!important; outline:none!important; padding:0!important; min-height:0!important; height:auto!important; appearance:textfield; -webkit-appearance:none; }
+    #view-lancar #fin-valor::placeholder { color:rgba(255,255,255,.6); }
+    #view-lancar .lc-body { padding:12px 14px 14px; }
+    #view-lancar .lc-mini { font-size:11px; font-weight:600; color:var(--text3); margin:12px 2px 4px; }
+    #view-lancar .lc-chips { display:flex; gap:6px; }
+    #view-lancar .lc-datechip { flex:1; text-align:center; font-size:13px; font-weight:500; padding:9px; border-radius:9px; border:1px solid var(--border2); background:#fff; color:var(--text2); cursor:pointer; display:flex; align-items:center; justify-content:center; gap:5px; }
+    #view-lancar .lc-datechip.on { background:var(--primary-light); border-color:var(--primary); color:var(--primary); font-weight:600; }
+    #view-lancar .lc-field { display:flex; align-items:center; gap:10px; padding:8px 11px; border:1px solid var(--border2); border-radius:11px; background:#fff; margin-top:8px; }
+    #view-lancar .lc-ic { width:34px; height:34px; border-radius:9px; background:var(--surface2); display:flex; align-items:center; justify-content:center; color:var(--text2); font-size:18px; flex-shrink:0; }
+    #view-lancar .lc-bank { width:34px; height:34px; border-radius:9px; display:flex; align-items:center; justify-content:center; color:#fff; flex-shrink:0; font-size:13px; font-weight:700; }
+    #view-lancar .lc-fbody { flex:1; min-width:0; }
+    #view-lancar .lc-fbody label { display:block; font-size:10.5px; color:var(--text3); line-height:1.2; margin:0; }
+    #view-lancar .lc-field input, #view-lancar .lc-field select { border:none!important; background:transparent!important; padding:0!important; min-height:0!important; height:auto!important; font-size:15px!important; color:var(--text)!important; width:100%!important; font-weight:500; outline:none; appearance:none; -webkit-appearance:none; }
+    #view-lancar .lc-chev { color:var(--border2); font-size:18px; flex-shrink:0; }
+    #view-lancar .lc-pills { display:flex; gap:5px; margin-top:6px; }
+    #view-lancar .lc-pill { flex:1; min-width:0; display:flex; align-items:center; justify-content:center; gap:4px; font-size:11.5px; font-weight:500; padding:9px 3px; border:1px solid var(--border2); border-radius:9px; background:#fff; color:var(--text2); cursor:pointer; white-space:nowrap; }
+    #view-lancar .lc-pill i { font-size:14px; }
+    #view-lancar .lc-pill.on { background:var(--primary); border-color:var(--primary); color:#fff; }
+    #view-lancar .lc-tagbtn { font-size:12px; font-weight:600; padding:6px 11px; border-radius:20px; border:1px solid var(--border2); background:var(--primary-light); color:var(--primary); cursor:pointer; display:inline-flex; align-items:center; gap:5px; white-space:nowrap; flex-shrink:0; }
+    #view-lancar .lc-tagbtn.on { background:var(--primary); color:#fff; border-color:var(--primary); }
+    #view-lancar .lc-addbtn { width:34px; height:34px; border-radius:9px; border:1px dashed var(--border2); background:#fff; color:var(--text2); cursor:pointer; flex-shrink:0; font-size:16px; display:flex; align-items:center; justify-content:center; }
+    #view-lancar .lc-check { display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text2); cursor:pointer; }
+    #view-lancar .lc-check input { width:auto!important; min-height:0!important; }
+    #view-lancar .lc-more { display:flex; align-items:center; justify-content:center; gap:6px; font-size:13px; color:var(--primary); font-weight:500; padding:11px; cursor:pointer; margin-top:8px; user-select:none; }
+    #view-lancar .lc-save { margin-top:12px; display:flex; align-items:center; justify-content:center; gap:7px; width:100%; border:none; border-radius:13px; padding:15px; font-size:15px; font-weight:700; color:#fff; cursor:pointer; }
+    @media (min-width:560px) { #view-lancar .lc-card { max-width:460px; margin-left:auto; margin-right:auto; } }
+  </style>
   <div id="view-lancar" class="view">
 
-    <!-- Lançamento rápido -->
-    <div class="card">
-      <div class="step-header">
-        <div class="step-num active"><i class="ti ti-plus" style="font-size:12px"></i></div>
-        <div><div class="step-title">Novo lançamento</div><div class="step-sub">Registre receitas e despesas no momento em que acontecem</div></div>
-      </div>
-
-      <div class="fin-tipo-toggle">
-        <button id="fin-tipo-despesa" class="fin-tipo-btn active despesa" onclick="finSetTipo('despesa')"><i class="ti ti-arrow-down-left"></i> Despesa</button>
-        <button id="fin-tipo-receita" class="fin-tipo-btn receita" onclick="finSetTipo('receita')"><i class="ti ti-arrow-up-right"></i> Receita</button>
-      </div>
-
-      <div class="fin-grid">
-        <input type="text" id="fin-desc" placeholder="Descrição (ex: Mercado, Salário...)" style="flex:2" />
-        <input type="number" id="fin-valor" placeholder="0.00" step="0.01" min="0" />
-      </div>
-      <div class="fin-grid" style="margin-top:8px">
-        <select id="fin-categoria"></select>
-        <input type="date" id="fin-data" />
-      </div>
-
-      <!-- Forma de pagamento (despesa) -->
-      <div id="fin-forma-wrap" style="margin-top:8px">
-        <div class="fin-forma-row">
-          <label>Forma:</label>
-          <select id="fin-forma" onchange="finOnFormaChange()">
-            <option value="dinheiro">Dinheiro</option>
-            <option value="debito">Débito</option>
-            <option value="credito">Crédito</option>
-            <option value="pix">Pix</option>
-          </select>
+    <div class="lc-card">
+      <!-- Cabeçalho colorido: tipo + valor em destaque -->
+      <div class="lc-hd" id="lc-hd" style="background:#C0392B">
+        <div class="lc-tgl">
+          <button id="fin-tipo-despesa" class="lc-tgl-btn on" onclick="finSetTipo('despesa')"><i class="ti ti-arrow-down-left"></i> Despesa</button>
+          <button id="fin-tipo-receita" class="lc-tgl-btn" onclick="finSetTipo('receita')"><i class="ti ti-arrow-up-right"></i> Receita</button>
         </div>
-        <div id="fin-credito-wrap" style="display:none;margin-top:8px">
-          <div class="fin-forma-row">
-            <select id="fin-cartao" style="flex:1"></select>
-            <button class="btn" onclick="finNovoCartao()" style="border:1px dashed var(--border2);color:var(--text2);font-size:12px;white-space:nowrap"><i class="ti ti-plus"></i> Cartão</button>
-          </div>
-          <label class="fin-check" style="margin-top:8px"><input type="checkbox" id="fin-parcelado" onchange="finToggleParcelado()" /> Parcelado</label>
-          <div id="fin-parc-wrap" style="display:none;align-items:center;gap:8px;margin-top:6px">
-            <span style="font-size:12px;color:var(--text2)">Nº de parcelas</span>
-            <input type="number" id="fin-parc-total" value="2" min="2" max="99" style="width:64px;text-align:center" />
-            <span style="font-size:11px;color:var(--text3)">(divide o valor total)</span>
+        <div class="lc-vlbl" id="lc-vlbl">Valor da despesa</div>
+        <div class="lc-valrow">
+          <span class="cur">R$</span>
+          <input type="number" id="fin-valor" placeholder="0,00" step="0.01" min="0" inputmode="decimal" />
+        </div>
+      </div>
+
+      <div class="lc-body">
+        <!-- Data: atalhos -->
+        <div class="lc-chips">
+          <button type="button" class="lc-datechip on" data-d="hoje" onclick="finSetData('hoje')">Hoje</button>
+          <button type="button" class="lc-datechip" data-d="ontem" onclick="finSetData('ontem')">Ontem</button>
+          <button type="button" class="lc-datechip" data-d="outra" onclick="finSetData('outra')"><i class="ti ti-calendar"></i> Outra</button>
+        </div>
+        <div id="fin-data-outra" style="display:none;margin-top:7px">
+          <div class="lc-field" style="margin-top:0">
+            <div class="lc-ic"><i class="ti ti-calendar"></i></div>
+            <div class="lc-fbody"><label>Data da transação</label><input type="date" id="fin-data" /></div>
           </div>
         </div>
-      </div>
 
-      <!-- Despesa fixa -->
-      <div id="fin-fixa-wrap" style="margin-top:8px">
-        <label class="fin-check"><input type="checkbox" id="fin-fixa" onchange="finToggleFixa()" /> Despesa fixa (repete todo mês)</label>
-        <div id="fin-fixa-meses-wrap" style="display:none;align-items:center;gap:8px;margin-top:6px">
-          <span style="font-size:12px;color:var(--text2)">Repetir por</span>
-          <input type="number" id="fin-fixa-meses" value="12" min="1" max="60" style="width:64px;text-align:center" />
-          <span style="font-size:12px;color:var(--text2)">meses</span>
+        <!-- Descrição -->
+        <div class="lc-field">
+          <div class="lc-ic"><i class="ti ti-pencil"></i></div>
+          <div class="lc-fbody"><label>Descrição</label><input type="text" id="fin-desc" placeholder="Ex: Mercado, Uber, Salário..." /></div>
         </div>
-      </div>
 
-      <!-- Pessoa + divisão -->
-      <div class="fin-grid" style="margin-top:8px">
-        <select id="fin-pessoa"></select>
-        <button class="btn" id="fin-btn-dividir" onclick="finToggleDivisao()" style="flex:0 0 auto;border:1px solid var(--border2);color:var(--text2)"><i class="ti ti-users"></i> Dividir</button>
-      </div>
-      <div id="fin-divisao-wrap" style="display:none;margin-top:8px;padding:10px;background:var(--surface2);border-radius:8px;border:1px solid var(--border2)"></div>
+        <!-- Categoria -->
+        <div class="lc-field">
+          <div class="lc-ic" style="background:var(--primary-light);color:var(--primary)"><i class="ti ti-tag"></i></div>
+          <div class="lc-fbody"><label>Categoria</label><select id="fin-categoria"></select></div>
+          <i class="ti ti-chevron-right lc-chev"></i>
+        </div>
 
-      <div style="margin-top:12px;display:flex;align-items:center;gap:10px">
-        <button class="btn btn-primary" onclick="finAddLancamento()"><i class="ti ti-plus"></i> Adicionar</button>
-        <span id="fin-feedback" style="font-size:12px"></span>
+        <!-- Forma de pagamento (despesa) -->
+        <div id="fin-forma-wrap">
+          <div class="lc-mini">Forma de pagamento</div>
+          <input type="hidden" id="fin-forma" value="dinheiro" />
+          <div class="lc-pills">
+            <button type="button" class="lc-pill on" data-f="dinheiro" onclick="finSetForma('dinheiro')"><i class="ti ti-cash"></i> Dinheiro</button>
+            <button type="button" class="lc-pill" data-f="pix" onclick="finSetForma('pix')"><i class="ti ti-brand-cashapp"></i> Pix</button>
+            <button type="button" class="lc-pill" data-f="debito" onclick="finSetForma('debito')"><i class="ti ti-businessplan"></i> Débito</button>
+            <button type="button" class="lc-pill" data-f="credito" onclick="finSetForma('credito')"><i class="ti ti-credit-card"></i> Crédito</button>
+          </div>
+          <div id="fin-credito-wrap" style="display:none">
+            <div class="lc-field">
+              <span class="lc-bank" id="fin-cartao-av" style="background:var(--primary)"><i class="ti ti-credit-card"></i></span>
+              <div class="lc-fbody"><label>Cartão</label><select id="fin-cartao" onchange="finRenderCartaoAvatar()"></select></div>
+              <button type="button" class="lc-addbtn" onclick="finNovoCartao()" title="Novo cartão" aria-label="Novo cartão"><i class="ti ti-plus"></i></button>
+            </div>
+            <label class="lc-check" style="margin-top:9px"><input type="checkbox" id="fin-parcelado" onchange="finToggleParcelado()" /> Parcelado</label>
+            <div id="fin-parc-wrap" style="display:none;align-items:center;gap:8px;margin-top:6px">
+              <span style="font-size:12px;color:var(--text2)">Nº de parcelas</span>
+              <input type="number" id="fin-parc-total" value="2" min="2" max="99" style="width:64px;text-align:center" />
+              <span style="font-size:11px;color:var(--text3)">(divide o valor total)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Responsável + divisão -->
+        <div class="lc-field">
+          <div class="lc-ic" style="background:var(--primary-light);color:var(--primary)"><i class="ti ti-user"></i></div>
+          <div class="lc-fbody"><label>Responsável</label><select id="fin-pessoa"></select></div>
+          <button type="button" id="fin-btn-dividir" class="lc-tagbtn" onclick="finToggleDivisao()"><i class="ti ti-users"></i> Dividir</button>
+        </div>
+        <div id="fin-divisao-wrap" style="display:none;margin-top:8px;padding:10px;background:var(--surface2);border-radius:8px;border:1px solid var(--border2)"></div>
+
+        <!-- Mais detalhes (despesa fixa) -->
+        <div class="lc-more" id="lc-more" onclick="finToggleMais()"><i class="ti ti-chevron-down" id="lc-more-ic"></i> <span>Mais detalhes</span></div>
+        <div id="lc-more-body" style="display:none">
+          <div id="fin-fixa-wrap">
+            <label class="lc-check"><input type="checkbox" id="fin-fixa" onchange="finToggleFixa()" /> Despesa fixa (repete todo mês)</label>
+            <div id="fin-fixa-meses-wrap" style="display:none;align-items:center;gap:8px;margin-top:6px">
+              <span style="font-size:12px;color:var(--text2)">Repetir por</span>
+              <input type="number" id="fin-fixa-meses" value="12" min="1" max="60" style="width:64px;text-align:center" />
+              <span style="font-size:12px;color:var(--text2)">meses</span>
+            </div>
+          </div>
+        </div>
+
+        <button class="lc-save" id="lc-save" onclick="finAddLancamento()" style="background:#C0392B"><i class="ti ti-check"></i> <span>Salvar despesa</span></button>
+        <div id="fin-feedback" style="font-size:12px;text-align:center;margin-top:8px"></div>
       </div>
     </div>
   </div><!-- /view-lancar -->
@@ -2080,20 +2142,79 @@ function finPopularCartoes() {
   sel.innerHTML = finCartoes.length
     ? finCartoes.map(c => `<option value="${c.id}">${c.nome}</option>`).join('')
     : '<option value="">— nenhum cartão —</option>'
+  if (window.finRenderCartaoAvatar) finRenderCartaoAvatar()
 }
 
 window.finSetTipo = (t) => {
   finTipo = t
-  document.getElementById('fin-tipo-despesa').classList.toggle('active', t==='despesa')
-  document.getElementById('fin-tipo-receita').classList.toggle('active', t==='receita')
+  const dz = t === 'despesa'
+  document.getElementById('fin-tipo-despesa').classList.toggle('on', dz)
+  document.getElementById('fin-tipo-receita').classList.toggle('on', !dz)
+  // Recolore cabeçalho + botão salvar conforme o tipo
+  const cor = dz ? '#C0392B' : '#27AE60'
+  document.getElementById('lc-hd').style.background = cor
+  document.getElementById('lc-vlbl').textContent = dz ? 'Valor da despesa' : 'Valor da receita'
+  const save = document.getElementById('lc-save')
+  save.style.background = cor
+  save.querySelector('span').textContent = dz ? 'Salvar despesa' : 'Salvar receita'
   // Receita não tem forma de pagamento / cartão / fixa
-  document.getElementById('fin-forma-wrap').style.display = t==='despesa' ? 'block' : 'none'
-  document.getElementById('fin-fixa-wrap').style.display  = t==='despesa' ? 'block' : 'none'
+  document.getElementById('fin-forma-wrap').style.display = dz ? 'block' : 'none'
+  document.getElementById('lc-more').style.display = dz ? 'flex' : 'none'
+  if (!dz) { document.getElementById('lc-more-body').style.display = 'none'; document.getElementById('lc-more-ic').className = 'ti ti-chevron-down' }
   finPopularCategorias()
+}
+window.finSetForma = (f) => {
+  document.getElementById('fin-forma').value = f
+  document.querySelectorAll('#fin-forma-wrap .lc-pill').forEach(p => p.classList.toggle('on', p.dataset.f === f))
+  finOnFormaChange()
+}
+window.finSetData = (which) => {
+  const di = document.getElementById('fin-data')
+  const wrap = document.getElementById('fin-data-outra')
+  const d = new Date()
+  if (which === 'ontem') d.setDate(d.getDate() - 1)
+  if (which === 'outra') { wrap.style.display = 'block' }
+  else { di.value = d.toISOString().slice(0,10); wrap.style.display = 'none' }
+  document.querySelectorAll('#view-lancar .lc-datechip').forEach(c => c.classList.toggle('on', c.dataset.d === which))
+}
+window.finToggleMais = () => {
+  const body = document.getElementById('lc-more-body')
+  const abrir = body.style.display === 'none'
+  body.style.display = abrir ? 'block' : 'none'
+  document.getElementById('lc-more-ic').className = abrir ? 'ti ti-chevron-up' : 'ti ti-chevron-down'
+}
+// Cor e iniciais do banco para o avatar do cartão
+function corBanco(nome) {
+  const n = (nome || '').toLowerCase()
+  if (n.includes('nu')) return '#820AD1'
+  if (n.includes('c6')) return '#242424'
+  if (n.includes('amaz')) return '#FF9900'
+  if (n.includes('brasil') || n.startsWith('bb')) return '#0038A8'
+  if (n.includes('santand')) return '#EC0000'
+  if (n.includes('inter')) return '#FF7A00'
+  if (n.includes('ita')) return '#EC7000'
+  if (n.includes('bradesco')) return '#CC092F'
+  if (n.includes('caixa')) return '#0070AF'
+  return null
+}
+function iniciaisBanco(nome) {
+  const ignore = ['de','do','da','dos','das','e']
+  const parts = (nome || '').trim().split(/\s+/).filter(w => w && !ignore.includes(w.toLowerCase()))
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
+  return (nome || '??').slice(0, 2).toUpperCase()
+}
+window.finRenderCartaoAvatar = () => {
+  const sel = document.getElementById('fin-cartao'), av = document.getElementById('fin-cartao-av')
+  if (!sel || !av) return
+  const c = finCartoes.find(x => x.id === sel.value)
+  const nome = c?.nome || ''
+  av.style.background = (c?.cor) || corBanco(nome) || '#185FA5'
+  av.innerHTML = nome ? `<span>${iniciaisBanco(nome)}</span>` : '<i class="ti ti-credit-card"></i>'
 }
 window.finOnFormaChange = () => {
   const credito = document.getElementById('fin-forma').value === 'credito'
   document.getElementById('fin-credito-wrap').style.display = credito ? 'block' : 'none'
+  if (credito) finRenderCartaoAvatar()
 }
 window.finToggleParcelado = () => {
   document.getElementById('fin-parc-wrap').style.display = document.getElementById('fin-parcelado').checked ? 'flex' : 'none'
@@ -2105,7 +2226,7 @@ window.finNovoCartao = async () => {
   const nome = prompt('Nome do cartão (ex: Nubank, C6):')
   if (!nome || !nome.trim()) return
   const { data } = await supabase.from('fin_cartoes').insert({ nome: nome.trim() }).select().single()
-  if (data) { finCartoes.push(data); finPopularCartoes(); document.getElementById('fin-cartao').value = data.id }
+  if (data) { finCartoes.push(data); finPopularCartoes(); document.getElementById('fin-cartao').value = data.id; finRenderCartaoAvatar() }
 }
 
 window.finToggleDivisao = () => {
