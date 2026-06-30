@@ -2825,13 +2825,14 @@ function routeHash() {
   const [path, query] = raw.split('?')
   const h = (path || '').toLowerCase()
   const params = new URLSearchParams(query || '')
+  // ?app=1 indica abertura pelo atalho do celular — sempre abre em Lançar
+  // (tem prioridade sobre o hash, pois iOS salva a última URL visitada)
+  if (new URLSearchParams(location.search).get('app') === '1') { trocarView('lancar'); return }
   if (h === 'financas' || h === 'lancamentos') { finFiltroFromParams(params); trocarView('financas') }
   else if (h === 'lancar') trocarView('lancar')
   else if (h === 'admin') trocarView('admin')
   else if (h === 'historico') trocarView('historico')
   else if (h === 'nova') trocarView('nova')
-  // iOS ignora o # do start_url — detecta pelo query param ?app=1 e abre em Lançar
-  else if (new URLSearchParams(location.search).get('app') === '1') trocarView('lancar')
 }
 window.addEventListener('hashchange', routeHash)
 
