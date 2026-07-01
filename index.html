@@ -271,6 +271,8 @@
           <select id="fedit-pessoa" style="width:100%;padding:9px 12px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:14px"></select>
         </div>
         <div id="fedit-div-wrap" style="display:none">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:6px">Toque para adicionar ou remover pessoas da divisão</div>
+          <div id="fedit-div-select" class="assign-btns" style="margin-bottom:10px"></div>
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
             <button id="fedit-btn-reais" onclick="feditSetModoDiv('reais')" style="padding:3px 10px;border-radius:5px;border:1px solid var(--border2);background:var(--primary);color:#fff;font-size:12px;cursor:pointer">R$</button>
             <button id="fedit-btn-pct" onclick="feditSetModoDiv('pct')" style="padding:3px 10px;border-radius:5px;border:1px solid var(--border2);background:var(--surface);color:var(--text2);font-size:12px;cursor:pointer">%</button>
@@ -2677,7 +2679,43 @@ function feditDivInicializar() {
   }))
 }
 
+window.feditToggleDivPessoa = (pessoaId) => {
+  let selecionadas = feditDivLinhas.map(d => d.pessoa_id)
+  if (selecionadas.includes(pessoaId)) selecionadas = selecionadas.filter(id => id !== pessoaId)
+  else selecionadas.push(pessoaId)
+
+  const total = parseFloat(document.getElementById('fedit-valor').value) || 0
+
+  if (selecionadas.length < 2) {
+    // menos de 2 pessoas: volta para "uma pessoa"
+    feditDivLinhas = []
+    const radioUma = document.querySelector('input[name="fedit-resp"][value="uma"]')
+    if (radioUma) radioUma.checked = true
+    document.getElementById('fedit-pessoa').value = selecionadas[0] || ''
+    feditModoDiv()
+    return
+  }
+
+  const vp = Number((total / selecionadas.length).toFixed(2))
+  feditDivLinhas = selecionadas.map((pid, i) => ({
+    pessoa_id: pid,
+    valor: i === selecionadas.length - 1 ? Number((total - vp * (selecionadas.length - 1)).toFixed(2)) : vp
+  }))
+  feditDivRender()
+}
+
 function feditDivRender() {
+  const selCont = document.getElementById('fedit-div-select')
+  if (selCont) {
+    const selecionadas = feditDivLinhas.map(d => d.pessoa_id)
+    const ps = pessoas.filter(p => p.id && !String(p.id).startsWith('local-'))
+    selCont.innerHTML = ps.map(p => {
+      const i = pessoas.indexOf(p)
+      const sel = selecionadas.includes(p.id)
+      const style = sel ? `background:${CORES_BG[i]};border-color:${CORES[i]};color:${CORES[i]};font-weight:600;` : ''
+      return `<button type="button" class="assign-btn" style="${style}" onclick="feditToggleDivPessoa('${p.id}')">${p.nome}</button>`
+    }).join('')
+  }
   const cont = document.getElementById('fedit-div-pessoas'); if (!cont) return
   const total = parseFloat(document.getElementById('fedit-valor').value) || 0
   const soma  = feditDivLinhas.reduce((s,d) => s + d.valor, 0)
