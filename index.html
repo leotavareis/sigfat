@@ -633,6 +633,7 @@
       <div class="fin-filtro-grupo" id="fin-filtro-pessoa"></div>
       <div class="fin-filtro-grupo" id="fin-filtro-cartao"></div>
       <div class="fin-filtro-grupo" id="fin-filtro-categoria"></div>
+      <div class="fin-filtro-grupo" id="fin-filtro-tipo"></div>
       <div class="fin-filtros-foot"><button onclick="finLimparFiltros()"><i class="ti ti-x"></i> Limpar filtros</button></div>
     </div>
 
@@ -2095,7 +2096,9 @@ document.addEventListener('click', e => { if (e.target.id === 'modal-manual') fe
 let finCategorias = [], finCartoes = [], finLancamentos = []
 let finTipo = 'despesa', finDivisaoPids = [], finCarregado = false
 // Estado dos filtros do resumo (#financas). Conjuntos de ids + texto livre.
-let finFiltro = { pessoas: new Set(), cartoes: new Set(), categorias: new Set(), texto: '' }
+let finFiltro = { pessoas: new Set(), cartoes: new Set(), categorias: new Set(), tipos: new Set(), texto: '' }
+const FIN_TIPOS_LANC = [{ id: 'parcelada', nome: 'Parcelada' }, { id: 'fixa', nome: 'Fixa' }, { id: 'unica', nome: 'Única' }]
+function finTipoLanc(l) { return l.fixa ? 'fixa' : (l.parcela && l.parcela.total > 1) ? 'parcelada' : 'unica' }
 const _hojeFin = new Date()
 let finAno = _hojeFin.getFullYear(), finMes = _hojeFin.getMonth() + 1
 const FIN_MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
@@ -2361,11 +2364,12 @@ function finDoMes() {
 // Aplica os filtros ativos (pessoa/cartão/categoria/texto) sobre um conjunto de lançamentos.
 function finFiltrar(lancs) {
   const f = finFiltro
-  if (!f.pessoas.size && !f.cartoes.size && !f.categorias.size && !f.texto) return lancs
+  if (!f.pessoas.size && !f.cartoes.size && !f.categorias.size && !f.tipos.size && !f.texto) return lancs
   return lancs.filter(l => {
     if (f.texto && !(l.descricao || '').toLowerCase().includes(f.texto)) return false
     if (f.cartoes.size && !f.cartoes.has(l.cartao_id || '')) return false
     if (f.categorias.size && !f.categorias.has(l.categoria_id || '')) return false
+    if (f.tipos.size && !f.tipos.has(finTipoLanc(l))) return false
     if (f.pessoas.size) {
       const pids = (l.divisao && l.divisao.length)
         ? l.divisao.map(d => d.pessoa_id)
@@ -2389,18 +2393,21 @@ function finRenderFiltros() {
   const catBox = document.getElementById('fin-filtro-categoria')
   if (catBox) catBox.innerHTML = `<span class="fin-filtro-lbl">Categoria</span>` +
     finCategorias.map(c => chip('categoria', c.id, c.nome, finFiltro.categorias.has(c.id), c.cor)).join('')
+  const tipoBox = document.getElementById('fin-filtro-tipo')
+  if (tipoBox) tipoBox.innerHTML = `<span class="fin-filtro-lbl">Tipo</span>` +
+    FIN_TIPOS_LANC.map(t => chip('tipo', t.id, t.nome, finFiltro.tipos.has(t.id))).join('')
   const busca = document.getElementById('fin-busca')
   if (busca && busca.value !== finFiltro.texto) busca.value = finFiltro.texto
 }
 
 window.finToggleFiltro = (tipo, id) => {
-  const set = tipo === 'pessoa' ? finFiltro.pessoas : tipo === 'cartao' ? finFiltro.cartoes : finFiltro.categorias
+  const set = tipo === 'pessoa' ? finFiltro.pessoas : tipo === 'cartao' ? finFiltro.cartoes : tipo === 'categoria' ? finFiltro.categorias : finFiltro.tipos
   if (set.has(id)) set.delete(id); else set.add(id)
   finRenderFiltros(); finRenderMes(); finSyncURL()
 }
 window.finOnBusca = (v) => { finFiltro.texto = (v || '').toLowerCase(); finRenderMes(); finSyncURL() }
 window.finLimparFiltros = () => {
-  finFiltro = { pessoas: new Set(), cartoes: new Set(), categorias: new Set(), texto: '' }
+  finFiltro = { pessoas: new Set(), cartoes: new Set(), categorias: new Set(), tipos: new Set(), texto: '' }
   finRenderFiltros(); finRenderMes(); finSyncURL()
 }
 
@@ -2410,6 +2417,7 @@ function finSyncURL() {
   if (finFiltro.pessoas.size) p.set('pessoa', [...finFiltro.pessoas].join(','))
   if (finFiltro.cartoes.size) p.set('cartao', [...finFiltro.cartoes].join(','))
   if (finFiltro.categorias.size) p.set('categoria', [...finFiltro.categorias].join(','))
+  if (finFiltro.tipos.size) p.set('tipo', [...finFiltro.tipos].join(','))
   if (finFiltro.texto) p.set('q', finFiltro.texto)
   const qs = p.toString()
   history.replaceState(null, '', '#financas' + (qs ? '?' + qs : ''))
@@ -2420,6 +2428,7 @@ function finFiltroFromParams(params) {
   finFiltro.pessoas = new Set((params.get('pessoa') || '').split(',').filter(Boolean))
   finFiltro.cartoes = new Set((params.get('cartao') || '').split(',').filter(Boolean))
   finFiltro.categorias = new Set((params.get('categoria') || '').split(',').filter(Boolean))
+  finFiltro.tipos = new Set((params.get('tipo') || '').split(',').filter(Boolean))
   finFiltro.texto = (params.get('q') || '').toLowerCase()
 }
 
