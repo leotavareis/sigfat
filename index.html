@@ -2681,9 +2681,13 @@ window.finGerarPDF = async () => {
         doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(90, 90, 90)
         doc.text(`Valor: R$ ${fmtBR(valorPix)}`, tx, y + 13)
         doc.text(`Recebedor: ${pixCfg.nome || ''}`, tx, y + 19)
+        doc.setFontSize(7.5); doc.setTextColor(110, 110, 110)
+        doc.text('Pix Copia e Cola:', tx, y + 26)
+        doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.2)
+        doc.line(tx, y + 28, rightX, y + 28)
         doc.setFontSize(7); doc.setTextColor(130, 130, 130)
-        const codeLines = doc.splitTextToSize('Pix Copia e Cola: ' + codigo, rightX - tx)
-        doc.text(codeLines.slice(0, 6), tx, y + 26)
+        const codeLines = doc.splitTextToSize(codigo, rightX - tx)
+        doc.text(codeLines.slice(0, 6), tx, y + 32)
         y += qrSize + 4
       }
     }
