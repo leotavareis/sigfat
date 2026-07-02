@@ -2460,6 +2460,17 @@ function finFiltrar(lancs) {
   })
 }
 
+// Valor "efetivo" de uma despesa considerando o filtro de pessoa ativo:
+// se filtrado por pessoa(s), conta apenas a fatia dela(s) em despesas divididas
+// (em vez do valor total do lançamento). Sem filtro de pessoa, conta o valor cheio.
+function finValorEfetivo(l) {
+  if (l.tipo !== 'despesa' || !finFiltro.pessoas.size) return Number(l.valor)
+  if (l.divisao && l.divisao.length) {
+    return l.divisao.filter(d => finFiltro.pessoas.has(d.pessoa_id)).reduce((s, d) => s + Number(d.valor), 0)
+  }
+  return finFiltro.pessoas.has(l.pessoa_id || '') ? Number(l.valor) : 0
+}
+
 // ─── FILTROS DO RESUMO (chips + busca + URL) ─────────────────────────────────
 function finRenderFiltros() {
   const chip = (tipo, id, nome, ativo, cor) =>
@@ -2614,8 +2625,10 @@ window.finGerarPDF = async () => {
       const nLinhas = Math.max(descLinhas.length, catLinhas.length, pesLinhas.length)
       const rowH = Math.max(5.5, nLinhas * lineH + 1.5)
 
+      const rowValor = ehReceita ? Number(l.valor) : finValorEfetivo(l)
+
       if (y + rowH > pageH - 45) { doc.addPage(); drawHeader() }
-      if (ehReceita) receitas += Number(l.valor); else despesas += Number(l.valor)
+      if (ehReceita) receitas += rowValor; else despesas += rowValor
 
       doc.setTextColor(40, 40, 40)
       doc.text(dia, cols[0].x, y)
@@ -2623,7 +2636,7 @@ window.finGerarPDF = async () => {
       doc.text(catLinhas, cols[2].x, y)
       doc.text(pesLinhas, cols[3].x, y)
       doc.setTextColor(ehReceita ? 39 : 192, ehReceita ? 174 : 57, ehReceita ? 96 : 43)
-      doc.text(`${ehReceita ? '+' : '-'} R$ ${fmtBR(l.valor)}`, cols[4].x, y, { align: 'right' })
+      doc.text(`${ehReceita ? '+' : '-'} R$ ${fmtBR(rowValor)}`, cols[4].x, y, { align: 'right' })
       y += rowH
       doc.setDrawColor(235, 235, 235); doc.setLineWidth(0.1)
       doc.line(M, y - 1.5, rightX, y - 1.5)
@@ -2716,7 +2729,7 @@ function finRenderMes() {
   document.getElementById('fin-mes-label').textContent = `${FIN_MESES[finMes-1]} ${finAno}`
   const lancs = finFiltrar(finDoMes())
   const receitas = lancs.filter(l => l.tipo==='receita').reduce((s,l) => s + Number(l.valor), 0)
-  const despesas = lancs.filter(l => l.tipo==='despesa').reduce((s,l) => s + Number(l.valor), 0)
+  const despesas = lancs.filter(l => l.tipo==='despesa').reduce((s,l) => s + finValorEfetivo(l), 0)
   const resultado = receitas - despesas
 
   document.getElementById('fin-totais').innerHTML = `
