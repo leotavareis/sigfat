@@ -2610,14 +2610,14 @@ window.finGerarPDF = async () => {
       const ehReceita = l.tipo === 'receita'
       if (ehReceita) receitas += Number(l.valor); else despesas += Number(l.valor)
       const dia = (l.data || '').slice(8, 10) + '/' + (l.data || '').slice(5, 7)
-      const pesTxt = (l.divisao && l.divisao.length > 1) ? `÷${l.divisao.length} pessoas` : (pessoa ? pessoa.nome : '—')
+      const pesTxt = (l.divisao && l.divisao.length > 1) ? `${l.divisao.length}/pessoas` : (pessoa ? pessoa.nome : '-')
       doc.setTextColor(40, 40, 40)
       doc.text(fit(dia, cols[0].w), cols[0].x, y)
       doc.text(fit(l.descricao, cols[1].w), cols[1].x, y)
-      doc.text(fit(cat ? cat.nome : '—', cols[2].w), cols[2].x, y)
+      doc.text(fit(cat ? cat.nome : '-', cols[2].w), cols[2].x, y)
       doc.text(fit(pesTxt, cols[3].w), cols[3].x, y)
       doc.setTextColor(ehReceita ? 39 : 192, ehReceita ? 174 : 57, ehReceita ? 96 : 43)
-      doc.text(`${ehReceita ? '+' : '−'} R$ ${fmtBR(l.valor)}`, cols[4].x, y, { align: 'right' })
+      doc.text(`${ehReceita ? '+' : '-'} R$ ${fmtBR(l.valor)}`, cols[4].x, y, { align: 'right' })
       y += 5.5
       doc.setDrawColor(235, 235, 235); doc.setLineWidth(0.1)
       doc.line(M, y - 1.5, rightX, y - 1.5)
