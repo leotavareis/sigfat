@@ -2525,18 +2525,17 @@ function finRenderMes() {
     <div class="fin-tot-card" style="background:#FBEAF0"><div class="lbl">Despesas</div><div class="val" style="color:#C0392B">R$ ${fmtBR(despesas)}</div></div>
     <div class="fin-tot-card" style="background:${resultado>=0?'#E6F1FB':'#FAECE7'}"><div class="lbl">Resultado</div><div class="val" style="color:${resultado>=0?'#185FA5':'#C0392B'}">R$ ${fmtBR(resultado)}</div></div>`
 
-  // Fatura projetada por cartão
+  // Fatura projetada por cartão (só entra quem tem cartão de fato vinculado)
   const porCartao = {}
-  lancs.filter(l => l.tipo==='despesa' && l.forma==='credito').forEach(l => {
-    const k = l.cartao_id || 'sem'
-    porCartao[k] = (porCartao[k] || 0) + Number(l.valor)
+  lancs.filter(l => l.tipo==='despesa' && l.forma==='credito' && l.cartao_id).forEach(l => {
+    porCartao[l.cartao_id] = (porCartao[l.cartao_id] || 0) + Number(l.valor)
   })
   const cartChaves = Object.keys(porCartao)
   document.getElementById('fin-cartoes-box').innerHTML = cartChaves.length ? `
     <div class="fin-sec-title"><i class="ti ti-credit-card"></i> Fatura projetada por cartão</div>
     ${cartChaves.map(k => {
       const c = finCartoes.find(x => x.id === k)
-      return `<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid var(--border)"><span>${c?c.nome:'Sem cartão'}</span><span style="font-weight:600">R$ ${fmtBR(porCartao[k])}</span></div>`
+      return `<div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px;border-bottom:1px solid var(--border)"><span>${c?c.nome:'Cartão removido'}</span><span style="font-weight:600">R$ ${fmtBR(porCartao[k])}</span></div>`
     }).join('')}` : ''
 
   // Por pessoa (despesas)
