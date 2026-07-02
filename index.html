@@ -520,15 +520,14 @@
     .fin-busca { width:100%; box-sizing:border-box; }
     .fin-filtros-topo { display:flex; gap:8px; align-items:center; }
     .fin-filtros-topo .fin-busca { flex:1; }
-    .fin-filtros-toggle-btn { display:none; align-items:center; gap:6px; flex:none; border:1px solid var(--border2); background:var(--surface); color:var(--text2); border-radius:8px; padding:0 12px; font-size:13px; cursor:pointer; white-space:nowrap; }
+    .fin-filtros-toggle-btn { display:flex; align-items:center; gap:6px; flex:none; border:1px solid var(--border2); background:var(--surface); color:var(--text2); border-radius:8px; padding:0 12px; font-size:13px; cursor:pointer; white-space:nowrap; }
     .fin-filtros-badge { background:#185FA5; color:#fff; border-radius:10px; font-size:11px; font-weight:700; padding:1px 6px; line-height:1.4; }
     .fin-filtros-chevron { transition:transform .15s ease; }
-    #fin-filtros-body { display:flex; flex-direction:column; gap:8px; }
+    #fin-filtros-body { display:none; }
+    .fin-filtros.aberto #fin-filtros-body { display:flex; flex-direction:column; gap:8px; }
     .fin-filtros.aberto .fin-filtros-chevron { transform:rotate(180deg); }
     @media (max-width:768px) {
-      .fin-filtros-toggle-btn { display:flex; min-height:44px; }
-      #fin-filtros-body { display:none; }
-      .fin-filtros.aberto #fin-filtros-body { display:flex; flex-direction:column; gap:8px; }
+      .fin-filtros-toggle-btn { min-height:44px; }
     }
     .fin-filtro-grupo { display:flex; flex-wrap:wrap; gap:6px; align-items:center; padding:6px 0; border-top:1px solid var(--border2); }
     .fin-filtro-grupo:first-child { border-top:none; padding-top:0; }
@@ -2186,6 +2185,7 @@ async function finAbrir() {
     finPopularSelects()
     const di = document.getElementById('fin-data')
     if (di && !di.value) di.value = new Date().toISOString().slice(0,10)
+    document.getElementById('fin-filtros')?.classList.toggle('aberto', window.innerWidth > 768)
   }
   await finCarregarLancamentos()
   finRenderFiltros()
