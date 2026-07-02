@@ -518,10 +518,26 @@
     /* ─── Barra de filtros do resumo ─────────────────────────────────────── */
     .fin-filtros { position:sticky; top:0; z-index:30; background:var(--bg); border:1px solid var(--border2); border-radius:12px; padding:10px 12px; margin-bottom:12px; display:flex; flex-direction:column; gap:8px; }
     .fin-busca { width:100%; box-sizing:border-box; }
-    .fin-filtro-grupo { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
-    .fin-filtro-lbl { font-size:11px; color:var(--text3); text-transform:uppercase; letter-spacing:.5px; margin-right:4px; min-width:54px; }
-    .fin-chip { border:1px solid var(--border2); background:var(--surface); color:var(--text2); border-radius:14px; padding:5px 11px; font-size:12px; cursor:pointer; line-height:1; white-space:nowrap; }
+    .fin-filtros-topo { display:flex; gap:8px; align-items:center; }
+    .fin-filtros-topo .fin-busca { flex:1; }
+    .fin-filtros-toggle-btn { display:none; align-items:center; gap:6px; flex:none; border:1px solid var(--border2); background:var(--surface); color:var(--text2); border-radius:8px; padding:0 12px; font-size:13px; cursor:pointer; white-space:nowrap; }
+    .fin-filtros-badge { background:#185FA5; color:#fff; border-radius:10px; font-size:11px; font-weight:700; padding:1px 6px; line-height:1.4; }
+    .fin-filtros-chevron { transition:transform .15s ease; }
+    #fin-filtros-body { display:flex; flex-direction:column; gap:8px; }
+    .fin-filtros.aberto .fin-filtros-chevron { transform:rotate(180deg); }
+    @media (max-width:768px) {
+      .fin-filtros-toggle-btn { display:flex; min-height:44px; }
+      #fin-filtros-body { display:none; }
+      .fin-filtros.aberto #fin-filtros-body { display:flex; flex-direction:column; gap:8px; }
+    }
+    .fin-filtro-grupo { display:flex; flex-wrap:wrap; gap:6px; align-items:center; padding:6px 0; border-top:1px solid var(--border2); }
+    .fin-filtro-grupo:first-child { border-top:none; padding-top:0; }
+    .fin-filtro-lbl { display:flex; align-items:center; gap:4px; font-size:11px; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:.5px; margin-right:2px; min-width:74px; }
+    .fin-filtro-lbl i { font-size:13px; color:var(--text3); }
+    .fin-chip { display:inline-flex; align-items:center; gap:6px; border:1px solid var(--border2); background:var(--surface); color:var(--text2); border-radius:14px; padding:5px 11px; font-size:12px; cursor:pointer; line-height:1; white-space:nowrap; }
     .fin-chip.ativo { background:var(--chip,#185FA5); border-color:var(--chip,#185FA5); color:#fff; }
+    .fin-chip-dot { width:8px; height:8px; border-radius:50%; background:var(--chip,#95A5A6); flex:none; }
+    .fin-chip.ativo .fin-chip-dot { background:#fff; opacity:.85; }
     .fin-filtros-foot { display:flex; justify-content:flex-end; }
     .fin-filtros-foot button { background:none; border:none; color:#185FA5; font-size:12px; cursor:pointer; padding:2px 4px; }
   </style>
@@ -668,12 +684,20 @@
 
     <!-- Barra de filtros (sticky) -->
     <div id="fin-filtros" class="fin-filtros">
-      <input type="text" id="fin-busca" class="fin-busca" placeholder="Buscar por descrição..." oninput="finOnBusca(this.value)" />
-      <div class="fin-filtro-grupo" id="fin-filtro-pessoa"></div>
-      <div class="fin-filtro-grupo" id="fin-filtro-cartao"></div>
-      <div class="fin-filtro-grupo" id="fin-filtro-categoria"></div>
-      <div class="fin-filtro-grupo" id="fin-filtro-tipo"></div>
-      <div class="fin-filtros-foot"><button onclick="finLimparFiltros()"><i class="ti ti-x"></i> Limpar filtros</button></div>
+      <div class="fin-filtros-topo">
+        <input type="text" id="fin-busca" class="fin-busca" placeholder="Buscar por descrição..." oninput="finOnBusca(this.value)" />
+        <button type="button" id="fin-filtros-toggle" class="fin-filtros-toggle-btn" onclick="finToggleFiltrosPainel()">
+          <i class="ti ti-filter"></i> Filtros<span id="fin-filtros-badge" class="fin-filtros-badge" style="display:none">0</span>
+          <i class="ti ti-chevron-down fin-filtros-chevron"></i>
+        </button>
+      </div>
+      <div id="fin-filtros-body">
+        <div class="fin-filtro-grupo" id="fin-filtro-pessoa"></div>
+        <div class="fin-filtro-grupo" id="fin-filtro-cartao"></div>
+        <div class="fin-filtro-grupo" id="fin-filtro-categoria"></div>
+        <div class="fin-filtro-grupo" id="fin-filtro-tipo"></div>
+        <div class="fin-filtros-foot"><button onclick="finLimparFiltros()"><i class="ti ti-x"></i> Limpar filtros</button></div>
+      </div>
     </div>
 
     <!-- Painel do mês -->
@@ -2433,21 +2457,28 @@ function finFiltrar(lancs) {
 // ─── FILTROS DO RESUMO (chips + busca + URL) ─────────────────────────────────
 function finRenderFiltros() {
   const chip = (tipo, id, nome, ativo, cor) =>
-    `<button class="fin-chip${ativo ? ' ativo' : ''}" onclick="finToggleFiltro('${tipo}','${id}')"${cor ? ` style="--chip:${cor}"` : ''}>${nome}</button>`
+    `<button class="fin-chip${ativo ? ' ativo' : ''}" onclick="finToggleFiltro('${tipo}','${id}')"${cor ? ` style="--chip:${cor}"` : ''}>${cor ? '<span class="fin-chip-dot"></span>' : ''}${nome}</button>`
   const pBox = document.getElementById('fin-filtro-pessoa')
-  if (pBox) pBox.innerHTML = `<span class="fin-filtro-lbl">Pessoa</span>` +
+  if (pBox) pBox.innerHTML = `<span class="fin-filtro-lbl"><i class="ti ti-user"></i>Pessoa</span>` +
     pessoas.filter(p => p.id).map(p => chip('pessoa', p.id, p.nome, finFiltro.pessoas.has(p.id), p.cor)).join('')
   const cBox = document.getElementById('fin-filtro-cartao')
-  if (cBox) cBox.innerHTML = `<span class="fin-filtro-lbl">Cartão</span>` +
+  if (cBox) cBox.innerHTML = `<span class="fin-filtro-lbl"><i class="ti ti-credit-card"></i>Cartão</span>` +
     finCartoes.map(c => chip('cartao', c.id, c.nome, finFiltro.cartoes.has(c.id), c.cor)).join('')
   const catBox = document.getElementById('fin-filtro-categoria')
-  if (catBox) catBox.innerHTML = `<span class="fin-filtro-lbl">Categoria</span>` +
+  if (catBox) catBox.innerHTML = `<span class="fin-filtro-lbl"><i class="ti ti-tag"></i>Categoria</span>` +
     finCategorias.map(c => chip('categoria', c.id, c.nome, finFiltro.categorias.has(c.id), c.cor)).join('')
   const tipoBox = document.getElementById('fin-filtro-tipo')
-  if (tipoBox) tipoBox.innerHTML = `<span class="fin-filtro-lbl">Tipo</span>` +
+  if (tipoBox) tipoBox.innerHTML = `<span class="fin-filtro-lbl"><i class="ti ti-repeat"></i>Tipo</span>` +
     FIN_TIPOS_LANC.map(t => chip('tipo', t.id, t.nome, finFiltro.tipos.has(t.id))).join('')
   const busca = document.getElementById('fin-busca')
   if (busca && busca.value !== finFiltro.texto) busca.value = finFiltro.texto
+  const total = finFiltro.pessoas.size + finFiltro.cartoes.size + finFiltro.categorias.size + finFiltro.tipos.size
+  const badge = document.getElementById('fin-filtros-badge')
+  if (badge) { badge.textContent = total; badge.style.display = total ? '' : 'none' }
+}
+
+window.finToggleFiltrosPainel = () => {
+  document.getElementById('fin-filtros')?.classList.toggle('aberto')
 }
 
 window.finToggleFiltro = (tipo, id) => {
