@@ -2623,7 +2623,8 @@ window.finGerarPDF = async () => {
       const ehReceita = l.tipo === 'receita'
       const dia = (l.data || '').slice(8, 10) + '/' + (l.data || '').slice(5, 7)
       const pesTxt = (l.divisao && l.divisao.length > 1) ? `${l.divisao.length}/pessoas` : (pessoa ? pessoa.nome : '-')
-      const descLinhas = doc.splitTextToSize(l.descricao || '', cols[1].w)
+      const descTxt = (l.descricao || '') + (l.parcela ? ` (${l.parcela.atual}/${l.parcela.total})` : '')
+      const descLinhas = doc.splitTextToSize(descTxt, cols[1].w)
       const catLinhas = doc.splitTextToSize(cat ? cat.nome : '-', cols[2].w)
       const pesLinhas = doc.splitTextToSize(pesTxt, cols[3].w)
       const nLinhas = Math.max(descLinhas.length, catLinhas.length, pesLinhas.length)
