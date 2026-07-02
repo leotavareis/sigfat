@@ -1752,9 +1752,9 @@ function gerarMensagemWhatsApp() {
     const total = txsPessoa.reduce((s,t) => s + t.valor, 0)
     msg += `👤 *${p.nome}*\nTotal: *R$ ${total.toFixed(2)}*\n`
     txsPessoa.forEach(tx => {
-      const label = tx.nota || tx.descricao
+      const label = capitalizarDesc(tx.nota || tx.descricao)
       const info = [tx.parcela ? `${tx.parcela.atual}/${tx.parcela.total}` : '', tx.dividido ? `÷${tx.ntotal}` : ''].filter(Boolean).join(' · ')
-      msg += `  ▸ ${label}${info ? ` _(${info})_` : ''} — R$ ${tx.valor.toFixed(2)}\n`
+      msg += `• ${label}${info ? ` _(${info})_` : ''} — R$ ${tx.valor.toFixed(2)}\n`
     })
     if (pixCfg.chave) {
       links.push({ nome: p.nome, total, codigo: gerarPixCopiaECola(total, `SIGFAT${i}`) })
@@ -2103,6 +2103,15 @@ const _hojeFin = new Date()
 let finAno = _hojeFin.getFullYear(), finMes = _hojeFin.getMonth() + 1
 const FIN_MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 const fmtBR = n => Number(n||0).toLocaleString('pt-BR', { minimumFractionDigits:2, maximumFractionDigits:2 })
+// Capitalização amigável para a mensagem do WhatsApp (não altera os dados salvos)
+const capitalizarDesc = s => {
+  const minusculas = new Set(['de','da','do','das','dos','e','a','o','em','no','na','para','com','por'])
+  return String(s || '').toLowerCase().split(/(\s+)/).map((palavra, i) => {
+    if (!palavra.trim()) return palavra
+    if (i > 0 && minusculas.has(palavra)) return palavra
+    return palavra.charAt(0).toUpperCase() + palavra.slice(1)
+  }).join('')
+}
 
 async function finAbrir() {
   if (!finCarregado) {
@@ -2580,7 +2589,7 @@ window.finMostrarResumo = function() {
     msg += `👤 *${p.nome}*\nTotal: *R$ ${fmtBR(total)}*\n`
     itens.forEach(it => {
       const parc = it.parcela ? ` (${it.parcela.atual}/${it.parcela.total})` : ''
-      msg += `  ▸ ${it.descricao}${parc} — R$ ${fmtBR(it.valor)}\n`
+      msg += `• ${capitalizarDesc(it.descricao)}${parc} — R$ ${fmtBR(it.valor)}\n`
     })
     msg += '\n'
     if (pixCfg.chave) {
