@@ -2552,8 +2552,6 @@ window.finGerarPDF = async () => {
       doc.restoreGraphicsState()
     }
 
-    const fit = (txt, w) => doc.splitTextToSize(String(txt == null ? '' : txt), w)[0] || ''
-
     // Colunas da tabela
     const cols = [
       { key: 'data', label: 'Data', x: M, w: 15 },
@@ -2601,24 +2599,32 @@ window.finGerarPDF = async () => {
     drawHeader()
 
     let receitas = 0, despesas = 0
+    const lineH = 3.6
     doc.setFontSize(8.5)
     lancs.forEach(l => {
-      if (y > pageH - 45) { doc.addPage(); drawHeader() }
       const cat = finCategorias.find(c => c.id === l.categoria_id)
       const cartao = finCartoes.find(c => c.id === l.cartao_id)
       const pessoa = pessoas.find(p => p.id === l.pessoa_id)
       const ehReceita = l.tipo === 'receita'
-      if (ehReceita) receitas += Number(l.valor); else despesas += Number(l.valor)
       const dia = (l.data || '').slice(8, 10) + '/' + (l.data || '').slice(5, 7)
       const pesTxt = (l.divisao && l.divisao.length > 1) ? `${l.divisao.length}/pessoas` : (pessoa ? pessoa.nome : '-')
+      const descLinhas = doc.splitTextToSize(l.descricao || '', cols[1].w)
+      const catLinhas = doc.splitTextToSize(cat ? cat.nome : '-', cols[2].w)
+      const pesLinhas = doc.splitTextToSize(pesTxt, cols[3].w)
+      const nLinhas = Math.max(descLinhas.length, catLinhas.length, pesLinhas.length)
+      const rowH = Math.max(5.5, nLinhas * lineH + 1.5)
+
+      if (y + rowH > pageH - 45) { doc.addPage(); drawHeader() }
+      if (ehReceita) receitas += Number(l.valor); else despesas += Number(l.valor)
+
       doc.setTextColor(40, 40, 40)
-      doc.text(fit(dia, cols[0].w), cols[0].x, y)
-      doc.text(fit(l.descricao, cols[1].w), cols[1].x, y)
-      doc.text(fit(cat ? cat.nome : '-', cols[2].w), cols[2].x, y)
-      doc.text(fit(pesTxt, cols[3].w), cols[3].x, y)
+      doc.text(dia, cols[0].x, y)
+      doc.text(descLinhas, cols[1].x, y)
+      doc.text(catLinhas, cols[2].x, y)
+      doc.text(pesLinhas, cols[3].x, y)
       doc.setTextColor(ehReceita ? 39 : 192, ehReceita ? 174 : 57, ehReceita ? 96 : 43)
       doc.text(`${ehReceita ? '+' : '-'} R$ ${fmtBR(l.valor)}`, cols[4].x, y, { align: 'right' })
-      y += 5.5
+      y += rowH
       doc.setDrawColor(235, 235, 235); doc.setLineWidth(0.1)
       doc.line(M, y - 1.5, rightX, y - 1.5)
     })
