@@ -2611,8 +2611,11 @@ window.finGerarPDF = async () => {
     drawHeader()
 
     let receitas = 0, despesas = 0
-    const lineH = 3.6
-    doc.setFontSize(8.5)
+    const fontPt = 8.5, lhFactor = 1.15
+    doc.setFontSize(fontPt); doc.setLineHeightFactor(lhFactor)
+    const lineH = (fontPt * lhFactor) / doc.internal.scaleFactor  // espaçamento real entre linhas (mm)
+    const padY = 2.2      // respiro acima e abaixo do texto dentro da linha
+    const ascent = 2.4    // distância do topo do texto até a baseline da 1ª linha
     lancs.forEach(l => {
       const cat = finCategorias.find(c => c.id === l.categoria_id)
       const cartao = finCartoes.find(c => c.id === l.cartao_id)
@@ -2624,23 +2627,24 @@ window.finGerarPDF = async () => {
       const catLinhas = doc.splitTextToSize(cat ? cat.nome : '-', cols[2].w)
       const pesLinhas = doc.splitTextToSize(pesTxt, cols[3].w)
       const nLinhas = Math.max(descLinhas.length, catLinhas.length, pesLinhas.length)
-      const rowH = Math.max(5.5, nLinhas * lineH + 1.5)
+      const rowH = padY * 2 + ascent + (nLinhas - 1) * lineH
 
       const rowValor = ehReceita ? Number(l.valor) : finValorEfetivo(l)
 
       if (y + rowH > pageH - 45) { doc.addPage(); drawHeader() }
       if (ehReceita) receitas += rowValor; else despesas += rowValor
 
+      const baseY = y + padY + ascent  // baseline da 1ª linha, com respiro no topo
       doc.setTextColor(40, 40, 40)
-      doc.text(dia, cols[0].x, y)
-      doc.text(descLinhas, cols[1].x, y)
-      doc.text(catLinhas, cols[2].x, y)
-      doc.text(pesLinhas, cols[3].x, y)
+      doc.text(dia, cols[0].x, baseY)
+      doc.text(descLinhas, cols[1].x, baseY)
+      doc.text(catLinhas, cols[2].x, baseY)
+      doc.text(pesLinhas, cols[3].x, baseY)
       doc.setTextColor(ehReceita ? 39 : 192, ehReceita ? 174 : 57, ehReceita ? 96 : 43)
-      doc.text(`${ehReceita ? '+' : '-'} R$ ${fmtBR(rowValor)}`, cols[4].x, y, { align: 'right' })
+      doc.text(`${ehReceita ? '+' : '-'} R$ ${fmtBR(rowValor)}`, cols[4].x, baseY, { align: 'right' })
       y += rowH
-      doc.setDrawColor(235, 235, 235); doc.setLineWidth(0.1)
-      doc.line(M, y - 1.5, rightX, y - 1.5)
+      doc.setDrawColor(232, 232, 232); doc.setLineWidth(0.1)
+      doc.line(M, y, rightX, y)
     })
 
     // Totais
