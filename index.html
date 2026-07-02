@@ -537,8 +537,8 @@
     .fin-chip.ativo { background:var(--chip,#185FA5); border-color:var(--chip,#185FA5); color:#fff; }
     .fin-chip-dot { width:8px; height:8px; border-radius:50%; background:var(--chip,#95A5A6); flex:none; }
     .fin-chip.ativo .fin-chip-dot { background:#fff; opacity:.85; }
-    .fin-filtros-foot { display:flex; justify-content:flex-end; }
-    .fin-filtros-foot button { background:none; border:none; color:#185FA5; font-size:12px; cursor:pointer; padding:2px 4px; }
+    .fin-filtros-foot { display:flex; justify-content:flex-end; gap:14px; }
+    .fin-filtros-foot button { background:none; border:none; color:#185FA5; font-size:12px; cursor:pointer; padding:2px 4px; display:inline-flex; align-items:center; gap:4px; }
   </style>
   <style>
     /* ─── Tela Lançar redesenhada ──────────────────────────────────────────── */
@@ -691,11 +691,15 @@
         </button>
       </div>
       <div id="fin-filtros-body">
+        <div class="fin-filtro-grupo" id="fin-filtro-mov"></div>
         <div class="fin-filtro-grupo" id="fin-filtro-pessoa"></div>
         <div class="fin-filtro-grupo" id="fin-filtro-cartao"></div>
         <div class="fin-filtro-grupo" id="fin-filtro-categoria"></div>
         <div class="fin-filtro-grupo" id="fin-filtro-tipo"></div>
-        <div class="fin-filtros-foot"><button onclick="finLimparFiltros()"><i class="ti ti-x"></i> Limpar filtros</button></div>
+        <div class="fin-filtros-foot">
+          <button id="fin-pdf-btn" onclick="finGerarPDF()"><i class="ti ti-file-type-pdf"></i> Gerar PDF</button>
+          <button onclick="finLimparFiltros()"><i class="ti ti-x"></i> Limpar filtros</button>
+        </div>
       </div>
     </div>
 
@@ -2160,7 +2164,8 @@ document.addEventListener('click', e => { if (e.target.id === 'modal-manual') fe
 let finCategorias = [], finCartoes = [], finLancamentos = []
 let finTipo = 'despesa', finDivisaoPids = [], finCarregado = false
 // Estado dos filtros do resumo (#financas). Conjuntos de ids + texto livre.
-let finFiltro = { pessoas: new Set(), cartoes: new Set(), categorias: new Set(), tipos: new Set(), texto: '' }
+let finFiltro = { movs: new Set(), pessoas: new Set(), cartoes: new Set(), categorias: new Set(), tipos: new Set(), texto: '' }
+const FIN_MOVS = [{ id: 'receita', nome: 'Receitas', cor: '#27AE60' }, { id: 'despesa', nome: 'Despesas', cor: '#C0392B' }]
 const FIN_TIPOS_LANC = [{ id: 'parcelada', nome: 'Parcelada' }, { id: 'fixa', nome: 'Fixa' }, { id: 'unica', nome: 'Única' }]
 function finTipoLanc(l) { return l.fixa ? 'fixa' : (l.parcela && l.parcela.total > 1) ? 'parcelada' : 'unica' }
 const _hojeFin = new Date()
@@ -2438,9 +2443,10 @@ function finDoMes() {
 // Aplica os filtros ativos (pessoa/cartão/categoria/texto) sobre um conjunto de lançamentos.
 function finFiltrar(lancs) {
   const f = finFiltro
-  if (!f.pessoas.size && !f.cartoes.size && !f.categorias.size && !f.tipos.size && !f.texto) return lancs
+  if (!f.movs.size && !f.pessoas.size && !f.cartoes.size && !f.categorias.size && !f.tipos.size && !f.texto) return lancs
   return lancs.filter(l => {
     if (f.texto && !(l.descricao || '').toLowerCase().includes(f.texto)) return false
+    if (f.movs.size && !f.movs.has(l.tipo)) return false
     if (f.cartoes.size && !f.cartoes.has(l.cartao_id || '')) return false
     if (f.categorias.size && !f.categorias.has(l.categoria_id || '')) return false
     if (f.tipos.size && !f.tipos.has(finTipoLanc(l))) return false
@@ -2458,6 +2464,9 @@ function finFiltrar(lancs) {
 function finRenderFiltros() {
   const chip = (tipo, id, nome, ativo, cor) =>
     `<button class="fin-chip${ativo ? ' ativo' : ''}" onclick="finToggleFiltro('${tipo}','${id}')"${cor ? ` style="--chip:${cor}"` : ''}>${cor ? '<span class="fin-chip-dot"></span>' : ''}${nome}</button>`
+  const movBox = document.getElementById('fin-filtro-mov')
+  if (movBox) movBox.innerHTML = `<span class="fin-filtro-lbl"><i class="ti ti-arrows-up-down"></i>Fluxo</span>` +
+    FIN_MOVS.map(m => chip('mov', m.id, m.nome, finFiltro.movs.has(m.id), m.cor)).join('')
   const pBox = document.getElementById('fin-filtro-pessoa')
   if (pBox) pBox.innerHTML = `<span class="fin-filtro-lbl"><i class="ti ti-user"></i>Pessoa</span>` +
     pessoas.filter(p => p.id).map(p => chip('pessoa', p.id, p.nome, finFiltro.pessoas.has(p.id), p.cor)).join('')
@@ -2472,7 +2481,7 @@ function finRenderFiltros() {
     FIN_TIPOS_LANC.map(t => chip('tipo', t.id, t.nome, finFiltro.tipos.has(t.id))).join('')
   const busca = document.getElementById('fin-busca')
   if (busca && busca.value !== finFiltro.texto) busca.value = finFiltro.texto
-  const total = finFiltro.pessoas.size + finFiltro.cartoes.size + finFiltro.categorias.size + finFiltro.tipos.size
+  const total = finFiltro.movs.size + finFiltro.pessoas.size + finFiltro.cartoes.size + finFiltro.categorias.size + finFiltro.tipos.size
   const badge = document.getElementById('fin-filtros-badge')
   if (badge) { badge.textContent = total; badge.style.display = total ? '' : 'none' }
 }
@@ -2481,20 +2490,203 @@ window.finToggleFiltrosPainel = () => {
   document.getElementById('fin-filtros')?.classList.toggle('aberto')
 }
 
+const finFiltroSet = (tipo) => ({ mov: finFiltro.movs, pessoa: finFiltro.pessoas, cartao: finFiltro.cartoes, categoria: finFiltro.categorias, tipo: finFiltro.tipos })[tipo]
 window.finToggleFiltro = (tipo, id) => {
-  const set = tipo === 'pessoa' ? finFiltro.pessoas : tipo === 'cartao' ? finFiltro.cartoes : tipo === 'categoria' ? finFiltro.categorias : finFiltro.tipos
+  const set = finFiltroSet(tipo)
+  if (!set) return
   if (set.has(id)) set.delete(id); else set.add(id)
   finRenderFiltros(); finRenderMes(); finSyncURL()
 }
 window.finOnBusca = (v) => { finFiltro.texto = (v || '').toLowerCase(); finRenderMes(); finSyncURL() }
 window.finLimparFiltros = () => {
-  finFiltro = { pessoas: new Set(), cartoes: new Set(), categorias: new Set(), tipos: new Set(), texto: '' }
+  finFiltro = { movs: new Set(), pessoas: new Set(), cartoes: new Set(), categorias: new Set(), tipos: new Set(), texto: '' }
   finRenderFiltros(); finRenderMes(); finSyncURL()
+}
+
+// Descrição textual dos filtros ativos (para cabeçalho do PDF)
+function finFiltrosDescricao() {
+  const d = []
+  if (finFiltro.movs.size) d.push([...finFiltro.movs].map(m => FIN_MOVS.find(x => x.id === m)?.nome || m).join(' / '))
+  if (finFiltro.pessoas.size) d.push('Pessoa: ' + [...finFiltro.pessoas].map(id => pessoas.find(p => p.id === id)?.nome || '?').join(', '))
+  if (finFiltro.cartoes.size) d.push('Cartão: ' + [...finFiltro.cartoes].map(id => finCartoes.find(c => c.id === id)?.nome || '?').join(', '))
+  if (finFiltro.categorias.size) d.push('Categoria: ' + [...finFiltro.categorias].map(id => finCategorias.find(c => c.id === id)?.nome || '?').join(', '))
+  if (finFiltro.tipos.size) d.push('Tipo: ' + [...finFiltro.tipos].map(id => FIN_TIPOS_LANC.find(t => t.id === id)?.nome || '?').join(', '))
+  if (finFiltro.texto) d.push('Busca: "' + finFiltro.texto + '"')
+  return d.length ? d.join('  ·  ') : 'Todos os lançamentos'
+}
+
+window.finGerarPDF = async () => {
+  const btn = document.getElementById('fin-pdf-btn')
+  const lancs = finFiltrar(finDoMes())
+  if (!lancs.length) { alert('Nenhum lançamento para gerar o PDF com os filtros atuais.'); return }
+  const orig = btn ? btn.innerHTML : ''
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2"></i> Gerando...' }
+  try {
+    const [jspdfMod, qrMod] = await Promise.all([
+      import('https://cdn.jsdelivr.net/npm/jspdf@2.5.1/+esm'),
+      import('https://cdn.jsdelivr.net/npm/qrcode@1.5.3/+esm')
+    ])
+    const { jsPDF } = jspdfMod
+    const QRCode = qrMod.default || qrMod
+
+    // Carrega a logo (marca d'água)
+    const logo = await new Promise((res) => {
+      const im = new Image()
+      im.onload = () => res(im); im.onerror = () => res(null)
+      im.src = '/login-logo.png'
+    })
+
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+    const pageW = doc.internal.pageSize.getWidth()
+    const pageH = doc.internal.pageSize.getHeight()
+    const M = 14
+    const rightX = pageW - M
+
+    const drawWatermark = () => {
+      if (!logo) return
+      const wmW = 120
+      const wmH = wmW * (logo.naturalHeight / logo.naturalWidth)
+      doc.saveGraphicsState()
+      doc.setGState(new doc.GState({ opacity: 0.06 }))
+      doc.addImage(logo, 'PNG', (pageW - wmW) / 2, (pageH - wmH) / 2, wmW, wmH)
+      doc.restoreGraphicsState()
+    }
+
+    const fit = (txt, w) => doc.splitTextToSize(String(txt == null ? '' : txt), w)[0] || ''
+
+    // Colunas da tabela
+    const cols = [
+      { key: 'data', label: 'Data', x: M, w: 15 },
+      { key: 'desc', label: 'Descrição', x: M + 15, w: 67 },
+      { key: 'cat', label: 'Categoria', x: M + 82, w: 33 },
+      { key: 'pes', label: 'Pessoa', x: M + 115, w: 33 },
+      { key: 'val', label: 'Valor', x: rightX, w: 26, align: 'right' }
+    ]
+
+    const mesLabel = `${FIN_MESES[finMes - 1]} ${finAno}`
+    let y = 0
+
+    const drawHeader = () => {
+      drawWatermark()
+      y = M
+      doc.setTextColor(24, 95, 165)
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(20)
+      doc.text('SIGFIN', M, y + 2)
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(11)
+      doc.setTextColor(90, 90, 90)
+      doc.text('Relatório de Lançamentos', M + 34, y + 2)
+      doc.setFontSize(9); doc.setTextColor(120, 120, 120)
+      doc.text(mesLabel, rightX, y + 2, { align: 'right' })
+      y += 9
+      doc.setDrawColor(24, 95, 165); doc.setLineWidth(0.4)
+      doc.line(M, y, rightX, y)
+      y += 6
+      // Descrição dos filtros
+      doc.setFontSize(8.5); doc.setTextColor(100, 100, 100)
+      const linhas = doc.splitTextToSize('Filtros: ' + finFiltrosDescricao(), rightX - M)
+      doc.text(linhas, M, y)
+      y += linhas.length * 4 + 3
+      drawTableHead()
+    }
+
+    const drawTableHead = () => {
+      doc.setFillColor(240, 242, 245)
+      doc.rect(M, y, rightX - M, 7, 'F')
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(60, 60, 60)
+      cols.forEach(c => doc.text(c.label, c.x, y + 5, c.align === 'right' ? { align: 'right' } : undefined))
+      y += 9
+      doc.setFont('helvetica', 'normal')
+    }
+
+    drawHeader()
+
+    let receitas = 0, despesas = 0
+    doc.setFontSize(8.5)
+    lancs.forEach(l => {
+      if (y > pageH - 45) { doc.addPage(); drawHeader() }
+      const cat = finCategorias.find(c => c.id === l.categoria_id)
+      const cartao = finCartoes.find(c => c.id === l.cartao_id)
+      const pessoa = pessoas.find(p => p.id === l.pessoa_id)
+      const ehReceita = l.tipo === 'receita'
+      if (ehReceita) receitas += Number(l.valor); else despesas += Number(l.valor)
+      const dia = (l.data || '').slice(8, 10) + '/' + (l.data || '').slice(5, 7)
+      const pesTxt = (l.divisao && l.divisao.length > 1) ? `÷${l.divisao.length} pessoas` : (pessoa ? pessoa.nome : '—')
+      doc.setTextColor(40, 40, 40)
+      doc.text(fit(dia, cols[0].w), cols[0].x, y)
+      doc.text(fit(l.descricao, cols[1].w), cols[1].x, y)
+      doc.text(fit(cat ? cat.nome : '—', cols[2].w), cols[2].x, y)
+      doc.text(fit(pesTxt, cols[3].w), cols[3].x, y)
+      doc.setTextColor(ehReceita ? 39 : 192, ehReceita ? 174 : 57, ehReceita ? 96 : 43)
+      doc.text(`${ehReceita ? '+' : '−'} R$ ${fmtBR(l.valor)}`, cols[4].x, y, { align: 'right' })
+      y += 5.5
+      doc.setDrawColor(235, 235, 235); doc.setLineWidth(0.1)
+      doc.line(M, y - 1.5, rightX, y - 1.5)
+    })
+
+    // Totais
+    const resultado = receitas - despesas
+    if (y > pageH - 55) { doc.addPage(); drawHeader() }
+    y += 4
+    doc.setDrawColor(24, 95, 165); doc.setLineWidth(0.4)
+    doc.line(M, y, rightX, y)
+    y += 7
+    const linhaTotal = (label, valor, cor) => {
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(90, 90, 90)
+      doc.text(label, rightX - 55, y)
+      doc.setFont('helvetica', 'bold'); doc.setTextColor(cor[0], cor[1], cor[2])
+      doc.text(`R$ ${fmtBR(valor)}`, rightX, y, { align: 'right' })
+      y += 6
+    }
+    if (receitas > 0) linhaTotal('Receitas', receitas, [39, 174, 96])
+    if (despesas > 0) linhaTotal('Despesas', despesas, [192, 57, 43])
+    linhaTotal('Resultado', resultado, resultado >= 0 ? [24, 95, 165] : [192, 57, 43])
+
+    // Pix (QR code) — valor a cobrar = despesas do recorte (ou receitas se não houver despesas)
+    const valorPix = despesas > 0 ? despesas : receitas
+    if (pixCfg.chave && valorPix > 0) {
+      const codigo = gerarPixCopiaECola(valorPix, 'SIGFINPDF')
+      if (codigo) {
+        if (y > pageH - 60) { doc.addPage(); drawHeader() }
+        y += 6
+        const qrDataUrl = await QRCode.toDataURL(codigo, { margin: 1, width: 300 })
+        const qrSize = 40
+        doc.addImage(qrDataUrl, 'PNG', M, y, qrSize, qrSize)
+        const tx = M + qrSize + 6
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(24, 95, 165)
+        doc.text('Pague com Pix', tx, y + 6)
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(90, 90, 90)
+        doc.text(`Valor: R$ ${fmtBR(valorPix)}`, tx, y + 13)
+        doc.text(`Recebedor: ${pixCfg.nome || ''}`, tx, y + 19)
+        doc.setFontSize(7); doc.setTextColor(130, 130, 130)
+        const codeLines = doc.splitTextToSize('Pix Copia e Cola: ' + codigo, rightX - tx)
+        doc.text(codeLines.slice(0, 6), tx, y + 26)
+        y += qrSize + 4
+      }
+    }
+
+    // Rodapé com data de geração em todas as páginas
+    const totalPag = doc.internal.getNumberOfPages()
+    for (let i = 1; i <= totalPag; i++) {
+      doc.setPage(i)
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(150, 150, 150)
+      const emitido = new Date().toLocaleString('pt-BR')
+      doc.text(`Emitido em ${emitido}`, M, pageH - 8)
+      doc.text(`Página ${i} de ${totalPag}`, rightX, pageH - 8, { align: 'right' })
+    }
+
+    doc.save(`SIGFIN_${FIN_MESES[finMes - 1]}_${finAno}.pdf`)
+  } catch (err) {
+    console.error('Erro ao gerar PDF:', err)
+    alert('Não foi possível gerar o PDF. Verifique a conexão e tente novamente.')
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = orig }
+  }
 }
 
 // Reflete o estado dos filtros no hash da URL (ex: #financas?pessoa=id1,id2&q=mercado)
 function finSyncURL() {
   const p = new URLSearchParams()
+  if (finFiltro.movs.size) p.set('mov', [...finFiltro.movs].join(','))
   if (finFiltro.pessoas.size) p.set('pessoa', [...finFiltro.pessoas].join(','))
   if (finFiltro.cartoes.size) p.set('cartao', [...finFiltro.cartoes].join(','))
   if (finFiltro.categorias.size) p.set('categoria', [...finFiltro.categorias].join(','))
@@ -2506,6 +2698,7 @@ function finSyncURL() {
 
 // Carrega o estado dos filtros a partir de uma querystring (URLSearchParams)
 function finFiltroFromParams(params) {
+  finFiltro.movs = new Set((params.get('mov') || '').split(',').filter(Boolean))
   finFiltro.pessoas = new Set((params.get('pessoa') || '').split(',').filter(Boolean))
   finFiltro.cartoes = new Set((params.get('cartao') || '').split(',').filter(Boolean))
   finFiltro.categorias = new Set((params.get('categoria') || '').split(',').filter(Boolean))
