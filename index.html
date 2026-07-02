@@ -130,6 +130,45 @@
   </style>
 </head>
 <body>
+<!-- ─── TELA DE LOGIN / BLOQUEIO ─────────────────────────────────────────────── -->
+<div id="auth-overlay" style="position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px">
+  <div style="width:100%;max-width:340px">
+    <div style="text-align:center;margin-bottom:22px">
+      <div style="font-size:26px;font-weight:700;color:var(--primary);letter-spacing:0.5px">SIGFIN</div>
+      <div style="font-size:13px;color:var(--text3);margin-top:2px">Controle Financeiro</div>
+    </div>
+
+    <!-- Desbloqueio por Face ID (aparece quando há passkey neste aparelho) -->
+    <div id="auth-lock" style="display:none;text-align:center">
+      <button id="auth-faceid-btn" style="width:100%;padding:14px;background:var(--primary);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px">
+        <i class="ti ti-face-id" style="font-size:20px"></i> Desbloquear com Face ID
+      </button>
+      <button id="auth-lock-senha" style="margin-top:12px;background:none;border:none;color:var(--text2);font-size:13px;cursor:pointer;text-decoration:underline">Usar senha</button>
+    </div>
+
+    <!-- Login por e-mail e senha -->
+    <form id="auth-login" style="display:none">
+      <input id="auth-email" type="email" autocomplete="username" placeholder="E-mail" style="width:100%;padding:12px;border:1px solid var(--border2);border-radius:10px;font-size:15px;margin-bottom:10px" />
+      <input id="auth-senha" type="password" autocomplete="current-password" placeholder="Senha" style="width:100%;padding:12px;border:1px solid var(--border2);border-radius:10px;font-size:15px;margin-bottom:14px" />
+      <button type="submit" id="auth-entrar" style="width:100%;padding:13px;background:var(--primary);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer">Entrar</button>
+    </form>
+
+    <div id="auth-erro" style="display:none;margin-top:12px;font-size:13px;color:#C0392B;text-align:center"></div>
+    <div id="auth-loading" style="display:none;margin-top:16px;text-align:center;color:var(--text3);font-size:13px"><i class="ti ti-loader-2"></i> Carregando…</div>
+  </div>
+</div>
+
+<!-- Convite para ativar Face ID (após o login, quando ainda não configurado) -->
+<div id="faceid-prompt" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.45);align-items:center;justify-content:center;padding:24px">
+  <div style="background:var(--surface);border-radius:16px;padding:22px;max-width:320px;width:100%;text-align:center">
+    <i class="ti ti-face-id" style="font-size:38px;color:var(--primary)"></i>
+    <div style="font-size:16px;font-weight:600;margin:10px 0 6px">Ativar Face ID?</div>
+    <div style="font-size:13px;color:var(--text2);line-height:1.5;margin-bottom:18px">Desbloqueie o app com o Face ID neste aparelho, sem digitar a senha toda vez.</div>
+    <button id="faceid-ativar" style="width:100%;padding:12px;background:var(--primary);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:8px">Ativar Face ID</button>
+    <button id="faceid-agora-nao" style="width:100%;padding:10px;background:none;border:none;color:var(--text2);font-size:13px;cursor:pointer">Agora não</button>
+  </div>
+</div>
+
 <header>
   <div class="logo">SIGFIN <span>Controle Financeiro</span></div>
   <div style="display:flex;align-items:center;gap:14px">
@@ -141,6 +180,7 @@
       <button class="header-nav-btn" id="hnav-admin" onclick="trocarView('admin')"><i class="ti ti-settings"></i> Admin</button>
     </div>
     <div id="sync-status" style="font-size:12px;color:var(--text3)"></div>
+    <button id="btn-sair" onclick="sairApp()" title="Sair" style="background:none;border:1px solid var(--border2);color:var(--text2);border-radius:8px;padding:6px 10px;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px"><i class="ti ti-logout"></i></button>
   </div>
 </header>
 
@@ -798,7 +838,9 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 
 const SUPABASE_URL = import.meta.env?.VITE_SUPABASE_URL || window.__SUPABASE_URL__ || ''
 const SUPABASE_KEY = import.meta.env?.VITE_SUPABASE_ANON_KEY || window.__SUPABASE_KEY__ || ''
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: { persistSession: true, autoRefreshToken: true, storageKey: 'sigfin-auth' }
+})
 
 const CORES    = ['#185FA5','#0F6E56','#854F0B','#993556','#3B6D11','#534AB7','#993B1D']
 const CORES_BG = ['#E6F1FB','#E1F5EE','#FAEEDA','#FBEAF0','#EAF3DE','#EEEDFE','#FAECE7']
@@ -3006,7 +3048,113 @@ function routeHash() {
 window.addEventListener('hashchange', routeHash)
 
 routeHash()  // mostra imediatamente a view da URL (#financas...) — antes dos dados carregarem
-init()
+
+// ─── AUTENTICAÇÃO + FACE ID (WebAuthn) ────────────────────────────────────────
+const FACEID_KEY = 'sigfin-faceid-cred'  // guarda o id da passkey deste aparelho
+const b64u = {
+  enc: buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''),
+  dec: str => { str = str.replace(/-/g,'+').replace(/_/g,'/'); const bin = atob(str); const b = new Uint8Array(bin.length); for (let i=0;i<bin.length;i++) b[i]=bin.charCodeAt(i); return b.buffer }
+}
+const faceIdDisponivel = () => !!(window.PublicKeyCredential && navigator.credentials)
+const faceIdConfigurado = () => !!localStorage.getItem(FACEID_KEY)
+
+function authMostrar(qual) {  // 'lock' | 'login'
+  document.getElementById('auth-lock').style.display  = qual==='lock'  ? 'block' : 'none'
+  document.getElementById('auth-login').style.display = qual==='login' ? 'block' : 'none'
+  document.getElementById('auth-loading').style.display = 'none'
+  document.getElementById('auth-overlay').style.display = 'flex'
+}
+function authErro(msg) {
+  const e = document.getElementById('auth-erro')
+  e.textContent = msg || ''; e.style.display = msg ? 'block' : 'none'
+}
+
+async function registrarFaceID() {
+  if (!faceIdDisponivel()) { alert('Este aparelho/navegador não suporta Face ID.'); return false }
+  try {
+    const { data:{ user } } = await supabase.auth.getUser()
+    const cred = await navigator.credentials.create({ publicKey: {
+      challenge: crypto.getRandomValues(new Uint8Array(32)),
+      rp: { name: 'SIGFIN' },
+      user: { id: new TextEncoder().encode(user?.id || 'sigfin-user'), name: user?.email || 'sigfin', displayName: user?.email || 'SIGFIN' },
+      pubKeyCredParams: [{ type:'public-key', alg:-7 }, { type:'public-key', alg:-257 }],
+      authenticatorSelection: { authenticatorAttachment:'platform', userVerification:'required', residentKey:'preferred' },
+      timeout: 60000
+    }})
+    localStorage.setItem(FACEID_KEY, b64u.enc(cred.rawId))
+    return true
+  } catch (e) { console.warn('Face ID cancelado/erro', e); return false }
+}
+
+async function desbloquearFaceID() {
+  const id = localStorage.getItem(FACEID_KEY)
+  if (!id) return false
+  try {
+    await navigator.credentials.get({ publicKey: {
+      challenge: crypto.getRandomValues(new Uint8Array(32)),
+      allowCredentials: [{ type:'public-key', id: b64u.dec(id) }],
+      userVerification: 'required',
+      timeout: 60000
+    }})
+    return true
+  } catch (e) { console.warn('Desbloqueio Face ID falhou', e); return false }
+}
+
+function ofertarFaceID() {
+  if (!faceIdDisponivel() || faceIdConfigurado()) return
+  const p = document.getElementById('faceid-prompt')
+  p.style.display = 'flex'
+  document.getElementById('faceid-ativar').onclick = async () => { await registrarFaceID(); p.style.display = 'none' }
+  document.getElementById('faceid-agora-nao').onclick = () => { p.style.display = 'none' }
+}
+
+async function entrarNoApp({ ofertar }) {
+  document.getElementById('auth-overlay').style.display = 'none'
+  await init()
+  if (ofertar) ofertarFaceID()
+}
+
+// Login por e-mail/senha
+document.getElementById('auth-login').addEventListener('submit', async (ev) => {
+  ev.preventDefault(); authErro('')
+  const email = document.getElementById('auth-email').value.trim()
+  const senha = document.getElementById('auth-senha').value
+  const btn = document.getElementById('auth-entrar'); btn.disabled = true; btn.textContent = 'Entrando…'
+  const { error } = await supabase.auth.signInWithPassword({ email, password: senha })
+  btn.disabled = false; btn.textContent = 'Entrar'
+  if (error) { authErro('E-mail ou senha inválidos.'); return }
+  await entrarNoApp({ ofertar: true })
+})
+
+// Botões da tela de bloqueio
+document.getElementById('auth-faceid-btn').addEventListener('click', async () => {
+  authErro('')
+  if (await desbloquearFaceID()) await entrarNoApp({ ofertar: false })
+  else authErro('Não foi possível desbloquear. Use a senha.')
+})
+document.getElementById('auth-lock-senha').addEventListener('click', () => { authErro(''); authMostrar('login') })
+
+// Boot: decide entre desbloqueio, login ou entrada direta
+async function bootAuth() {
+  const { data:{ session } } = await supabase.auth.getSession()
+  if (session) {
+    if (faceIdConfigurado()) {
+      authMostrar('lock')
+      if (await desbloquearFaceID()) { await entrarNoApp({ ofertar: false }); return }
+      // se falhar/cancelar, mantém a tela de bloqueio para tentar de novo ou usar senha
+    } else {
+      await entrarNoApp({ ofertar: true })
+    }
+  } else {
+    authMostrar('login')
+  }
+}
+window.sairApp = async () => {
+  if (!confirm('Sair do app?')) return
+  await supabase.auth.signOut()
+  location.reload()
+}
+bootAuth()
 
 // ─── IMPORTAR PARCELAS DO JSON ────────────────────────────────────────────────
 let fimGrupos = []   // lista de grupos (1 por compra parcelada) para revisão
