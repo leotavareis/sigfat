@@ -321,6 +321,14 @@
           <div id="fedit-div-pessoas"></div>
         </div>
       </div>
+      <div id="fedit-fixa-wrap" style="margin-top:10px;display:none">
+        <label class="lc-check"><input type="checkbox" id="fedit-fixa" onchange="finEditToggleFixa()" /> <span id="fedit-fixa-lbl">Receita fixa (repete todo mês)</span></label>
+        <div id="fedit-fixa-meses-wrap" style="display:none;align-items:center;gap:8px;margin-top:6px">
+          <span style="font-size:12px;color:var(--text2)">Repetir por</span>
+          <input type="number" id="fedit-fixa-meses" value="12" min="1" max="60" style="width:64px;text-align:center" />
+          <span style="font-size:12px;color:var(--text2)">meses (a partir deste)</span>
+        </div>
+      </div>
       <div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end;">
         <button class="btn" onclick="document.getElementById('modal-fin-edit').style.display='none'" style="border:1px solid var(--border2);color:var(--text2);background:var(--surface)">Cancelar</button>
         <button class="btn btn-primary" onclick="finEditarSalvar()"><i class="ti ti-check"></i> Salvar</button>
@@ -2696,9 +2704,20 @@ window.finGerarPDF = async () => {
         doc.text('Pix Copia e Cola:', tx, y + 26)
         doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.2)
         doc.line(tx, y + 28, rightX, y + 28)
-        doc.setFontSize(7); doc.setTextColor(130, 130, 130)
-        const codeLines = doc.splitTextToSize(codigo, rightX - tx)
-        doc.text(codeLines.slice(0, 6), tx, y + 32)
+        doc.setTextColor(130, 130, 130)
+        // O código precisa caber em UMA única linha: se quebrar em várias linhas no PDF,
+        // a seleção/cópia do usuário insere quebras de linha no meio do payload e o
+        // banco recusa o código por CRC/formato inválido.
+        const codeWidth = rightX - tx
+        let codeFontSize = 7
+        doc.setFont('courier', 'normal')
+        doc.setFontSize(codeFontSize)
+        while (codeFontSize > 4 && doc.getTextWidth(codigo) > codeWidth) {
+          codeFontSize -= 0.5
+          doc.setFontSize(codeFontSize)
+        }
+        doc.text(codigo, tx, y + 32)
+        doc.setFont('helvetica', 'normal')
         y += qrSize + 4
       }
     }
@@ -3101,8 +3120,23 @@ window.finEditarAbrir = (id) => {
   feditSetModoDiv('reais')
   feditModoDiv()
 
+  // Fixa (só para receita — despesa fixa segue o mesmo padrão se quisermos habilitar depois)
+  const fixaWrap = document.getElementById('fedit-fixa-wrap')
+  if (l.tipo === 'receita') {
+    fixaWrap.style.display = 'block'
+    document.getElementById('fedit-fixa-lbl').textContent = 'Receita fixa (repete todo mês)'
+    document.getElementById('fedit-fixa').checked = !!l.fixa
+    document.getElementById('fedit-fixa').disabled = !!l.fixa
+    document.getElementById('fedit-fixa-meses-wrap').style.display = 'none'
+  } else {
+    fixaWrap.style.display = 'none'
+  }
+
   document.getElementById('fedit-feedback').textContent = ''
   document.getElementById('modal-fin-edit').style.display = 'flex'
+}
+window.finEditToggleFixa = () => {
+  document.getElementById('fedit-fixa-meses-wrap').style.display = document.getElementById('fedit-fixa').checked ? 'flex' : 'none'
 }
 window.finEditOnForma = () => {
   document.getElementById('fedit-cartao-wrap').style.display = document.getElementById('fedit-forma').value === 'credito' ? 'flex' : 'none'
@@ -3132,10 +3166,27 @@ window.finEditarSalvar = async () => {
     pessoa_id = pid && !pid.startsWith('local-') ? pid : null
   }
 
+  // Marcar como fixa agora (só permitido se ainda não era fixa — evita gerar meses duplicados)
+  const tornarFixa = !ehDespesa && !l.fixa && document.getElementById('fedit-fixa').checked
+  const fixaMeses = tornarFixa ? Math.max(1, parseInt(document.getElementById('fedit-fixa-meses').value) || 1) : 1
+  const grupo_id = tornarFixa ? crypto.randomUUID() : l.grupo_id
+
   const patch = { descricao: desc, valor, data, categoria_id, forma, cartao_id, pessoa_id, divisao, nota: desc }
+  if (tornarFixa) { patch.fixa = true; patch.grupo_id = grupo_id }
   fb.innerHTML = '<span style="color:var(--text3)">Salvando...</span>'
   const { error } = await supabase.from('fin_lancamentos').update(patch).eq('id', id)
   if (error) { fb.innerHTML = '<span style="color:#C0392B">⚠ Erro ao salvar</span>'; return }
+
+  // Gera as ocorrências dos próximos meses (a partir do mês seguinte a este, que já foi salvo acima)
+  if (tornarFixa && fixaMeses > 1) {
+    const proximas = []
+    for (let k = 1; k < fixaMeses; k++) {
+      proximas.push({ tipo: 'receita', descricao: desc, valor, data: finAddMeses(data, k), mes_fatura: null, categoria_id, forma: null, cartao_id: null, pessoa_id, divisao, parcela: null, grupo_id, fixa: true, nota: desc })
+    }
+    const { error: errProx } = await supabase.from('fin_lancamentos').insert(proximas)
+    if (errProx) { fb.innerHTML = '<span style="color:#C0392B">⚠ Receita salva, mas houve erro ao gerar os próximos meses</span>'; }
+  }
+
   // salva memória para reconhecimento futuro
   await salvarMemoria({ descricao: desc, valor, pessoa_id, divisao, nota: desc })
   document.getElementById('modal-fin-edit').style.display = 'none'
