@@ -763,6 +763,15 @@ function gerarPixCopiaECola(valor, txtid) {
 function uid() { return Math.random().toString(36).slice(2)+Date.now().toString(36) }
 function mesAtual() { const d=new Date(); return `${d.getMonth()+1}/${d.getFullYear()}` }
 
+// ════════════════════════════════════════════════════════════════════════════
+// MÓDULO FINANÇAS — receitas e despesas (independente do fluxo de faturas)
+// ════════════════════════════════════════════════════════════════════════════
+let finCategorias = [], finCartoes = [], finLancamentos = []
+let finTipo = 'despesa', finDivisaoPids = [], finCarregado = false
+// Estado dos filtros do resumo (#financas). Conjuntos de ids + texto livre.
+let finFiltro = { movs: new Set(), pessoas: new Set(), cartoes: new Set(), categorias: new Set(), tipos: new Set(), texto: '' }
+const FIN_MOVS = [{ id: 'receita', nome: 'Receitas', cor: '#27AE60' }, { id: 'despesa', nome: 'Despesas', cor: '#C0392B' }]
+const FIN_TIPOS_LANC = [{ id: 'parcelada', nome: 'Parcelada' }, { id: 'fixa', nome: 'Fixa' }, { id: 'unica', nome: 'Única' }]
 function finTipoLanc(l) { return l.fixa ? 'fixa' : (l.parcela && l.parcela.total > 1) ? 'parcelada' : 'unica' }
 const _hojeFin = new Date()
 let finAno = _hojeFin.getFullYear(), finMes = _hojeFin.getMonth() + 1
