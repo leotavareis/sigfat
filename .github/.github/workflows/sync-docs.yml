@@ -1,0 +1,56 @@
+﻿name: Sync Docs Central
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch: {}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do projeto
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Preencher metadados automaticos (commit, data)
+        run: |
+          COMMIT_SHA=$(git rev-parse --short HEAD)
+          COMMIT_MSG=$(git log -1 --pretty=%s | sed "s/'/\\\\'/g")
+          DATA_ATUAL=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          python3 - <<EOF
+          import re
+          path = ".docs/meta.yaml"
+          with open(path) as f:
+              content = f.read()
+          content = re.sub(r'ultima_atualizacao: .*', 'ultima_atualizacao: "${DATA_ATUAL}"', content)
+          content = re.sub(r'ultimo_commit: .*', 'ultimo_commit: "${COMMIT_SHA}"', content)
+          content = re.sub(r'ultimo_commit_msg: .*', 'ultimo_commit_msg: "${COMMIT_MSG}"', content)
+          with open(path, "w") as f:
+              f.write(content)
+          EOF
+
+      - name: Checkout do repositorio central de docs
+        uses: actions/checkout@v4
+        with:
+          repository: leotavareis/docs-sistemas-central
+          token: ${{ secrets.DOCS_CENTRAL_TOKEN }}
+          path: docs-central
+
+      - name: Copiar meta.yaml para o repositorio central
+        run: |
+          REPO_NOME=$(basename "${{ github.repository }}")
+          mkdir -p docs-central/sistemas
+          cp .docs/meta.yaml "docs-central/sistemas/${REPO_NOME}.yaml"
+
+      - name: Commit e push no repositorio central
+        run: |
+          cd docs-central
+          git config user.name "docs-bot"
+          git config user.email "docs-bot@users.noreply.github.com"
+          git add sistemas/
+          git diff --staged --quiet && echo "Nada mudou" && exit 0
+          git commit -m "docs: atualiza metadados de ${{ github.repository }}"
+          git push

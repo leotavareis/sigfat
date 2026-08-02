@@ -1,0 +1,39 @@
+﻿nome: "SigFat"
+descricao: "Controle de gastos de cartao de credito compartilhado entre multiplas pessoas"
+categoria: "web app"
+
+ambiente: "serverless"
+
+stack:
+  - "JavaScript (vanilla)"
+  - "Vite"
+  - "Supabase"
+  - "Vercel"
+
+repositorio: "leotavareis/sigfat"
+url_producao: "https://sigfat.vercel.app"
+
+hospedagem:
+  provedor: "Vercel"
+  regiao: ""
+
+deploy:
+  automatico: true
+  comando: "vercel --prod"
+  script_manual: |
+    
+
+variaveis_ambiente:
+  - "SUPABASE_URL"
+  - "SUPABASE_ANON_KEY"
+
+integracoes:
+  - "Supabase (banco de dados e auth)"
+  - "PDF.js (parsing de faturas)"
+
+notas: |
+  Projeto Supabase: wjtrzpwerkyaaoshzegs. Projeto Vercel: prj_PVOjCKdE3o9pvHO73lruVFIZxWZG.
+
+ultima_atualizacao: ""
+ultimo_commit: ""
+ultimo_commit_msg: ""
