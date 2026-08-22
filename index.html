@@ -1767,7 +1767,10 @@ window.finEditarSalvar = async () => {
   const fixaMeses = tornarFixa ? Math.max(1, parseInt(document.getElementById('fedit-fixa-meses').value) || 1) : 1
   const grupo_id = tornarFixa ? crypto.randomUUID() : l.grupo_id
 
-  const patch = { descricao: desc, valor, data, categoria_id, forma, cartao_id, pessoa_id, divisao, nota: desc }
+  const mesFaturaCalc = (ehDespesa && forma === 'credito' && cartao_id) ? finAplicarFechamento(data, cartao_id) : data
+  const mes_fatura = (mesFaturaCalc !== data) ? mesFaturaCalc : null
+
+  const patch = { descricao: desc, valor, data, categoria_id, forma, cartao_id, pessoa_id, divisao, nota: desc, mes_fatura }
   if (tornarFixa) { patch.fixa = true; patch.grupo_id = grupo_id }
   fb.innerHTML = '<span style="color:var(--text3)">Salvando...</span>'
   const { error } = await supabase.from('fin_lancamentos').update(patch).eq('id', id)
