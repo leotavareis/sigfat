@@ -1776,6 +1776,16 @@ window.finEditarSalvar = async () => {
   const { error } = await supabase.from('fin_lancamentos').update(patch).eq('id', id)
   if (error) { fb.innerHTML = '<span style="color:#C0392B">⚠ Erro ao salvar</span>'; return }
 
+  // Lançamento de grupo (parcelas/repetições): oferece propagar os campos em comum às demais ocorrências
+  if (!tornarFixa && l.grupo_id) {
+    const qtd = finLancamentos.filter(x => x.grupo_id === l.grupo_id).length
+    if (qtd > 1 && confirm(`Este lançamento faz parte de um grupo de ${qtd} (parcelas/repetições).\n\nOK = aplicar responsável, categoria, cartão e descrição a TODOS os ${qtd}\nCancelar = aplicar só a este`)) {
+      const comum = { descricao: desc, categoria_id, forma, cartao_id, pessoa_id, divisao, nota: desc }
+      const { error: errGrp } = await supabase.from('fin_lancamentos').update(comum).eq('grupo_id', l.grupo_id)
+      if (errGrp) { fb.innerHTML = '<span style="color:#C0392B">⚠ Salvo neste, mas erro ao aplicar ao grupo</span>'; return }
+    }
+  }
+
   // Gera as ocorrências dos próximos meses (a partir do mês seguinte a este, que já foi salvo acima)
   if (tornarFixa && fixaMeses > 1) {
     const proximas = []
