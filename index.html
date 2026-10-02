@@ -186,6 +186,17 @@
   </div>
 </div>
 
+<!-- MODAL: Detalhes do lançamento (somente visualização) -->
+<div id="modal-fin-det" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;align-items:center;justify-content:center;" onclick="if(event.target===this)this.style.display='none'">
+  <div style="background:var(--surface);border-radius:var(--radius);max-width:440px;width:92%;max-height:88vh;overflow-y:auto;margin:auto;box-shadow:0 8px 32px rgba(0,0,0,.18);">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--border);">
+      <span style="font-size:14px;font-weight:600;color:var(--text);"><i class="ti ti-info-circle"></i> Detalhes do lançamento</span>
+      <button onclick="document.getElementById('modal-fin-det').style.display='none'" style="background:none;border:none;font-size:20px;color:var(--text3);cursor:pointer;">&times;</button>
+    </div>
+    <div id="fin-det-body" style="padding:16px 20px;"></div>
+  </div>
+</div>
+
 <div id="modal-fin-edit" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;align-items:center;justify-content:center;" onclick="if(event.target===this)this.style.display='none'">
   <div style="background:var(--surface);border-radius:var(--radius);max-width:440px;width:92%;max-height:88vh;overflow-y:auto;margin:auto;box-shadow:0 8px 32px rgba(0,0,0,.18);">
     <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--border);">
@@ -1463,17 +1474,64 @@ function finRowHTML(l) {
   if (l.fixa) tags.push('Fixa')
   if (l.divisao && l.divisao.length>1) tags.push(`÷${l.divisao.length}`)
   else if (pessoa) tags.push(pessoa.nome)
-  return `<div class="fin-lanc-row">
+  return `<div class="fin-lanc-row" style="cursor:pointer" onclick="finDetalhes('${l.id}')">
     <div style="width:34px;text-align:center;font-size:11px;color:var(--text3)">${dia}</div>
     <div style="flex:1;min-width:0">
       <div style="font-size:13px;font-weight:500;color:var(--text)">${l.descricao}</div>
       <div style="font-size:11px;color:var(--text3)">${tags.join(' · ')}</div>
     </div>
     <span style="font-size:14px;font-weight:600;color:${cor};white-space:nowrap">${sinal} R$ ${fmtBR(l.valor)}</span>
-    <button onclick="finEditarAbrir('${l.id}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:15px;padding:4px" title="Editar"><i class="ti ti-edit"></i></button>
-    <button onclick="finExcluir('${l.id}','${l.grupo_id||''}')" style="background:none;border:none;color:#C0392B;cursor:pointer;font-size:15px;padding:4px" title="Excluir"><i class="ti ti-trash"></i></button>
+    <button onclick="event.stopPropagation();finEditarAbrir('${l.id}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:15px;padding:4px" title="Editar"><i class="ti ti-edit"></i></button>
+    <button onclick="event.stopPropagation();finExcluir('${l.id}','${l.grupo_id||''}')" style="background:none;border:none;color:#C0392B;cursor:pointer;font-size:15px;padding:4px" title="Excluir"><i class="ti ti-trash"></i></button>
   </div>`
 }
+
+// Modal somente leitura com todos os dados do lançamento
+window.finDetalhes = (id) => {
+  const l = finLancamentos.find(x => x.id === id); if (!l) return
+  const cat = finCategorias.find(c => c.id === l.categoria_id)
+  const cartao = finCartoes.find(c => c.id === l.cartao_id)
+  const nomePessoa = pid => pessoas.find(p => p.id === pid)?.nome || '—'
+  const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+  const fmtData = d => d ? `${d.slice(8,10)}/${d.slice(5,7)}/${d.slice(0,4)}` : '—'
+  const ehReceita = l.tipo === 'receita'
+  const competencia = l.mes_fatura || l.data || ''
+  const mesComp = competencia ? `${FIN_MESES[parseInt(competencia.slice(5,7))-1]}/${competencia.slice(0,4)}` : '—'
+  const formas = { dinheiro:'Dinheiro', pix:'Pix', debito:'Débito', credito:'Crédito' }
+  const grupo = l.grupo_id ? finLancamentos.filter(x => x.grupo_id === l.grupo_id).sort((a,b) => (a.data||'').localeCompare(b.data||'')) : []
+
+  const linhas = []
+  const add = (rotulo, valor) => linhas.push(`<div style="display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px"><span style="color:var(--text3)">${rotulo}</span><span style="color:var(--text);font-weight:500;text-align:right;word-break:break-word">${valor}</span></div>`)
+  add('Tipo', ehReceita ? 'Receita' : 'Despesa')
+  add('Data', fmtData(l.data))
+  add('Mês de competência', mesComp)
+  if (!ehReceita && l.forma) add('Forma de pagamento', formas[l.forma] || l.forma)
+  if (l.forma === 'credito' && cartao) add('Cartão', cartao.nome)
+  add('Categoria', cat ? cat.nome : 'Sem categoria')
+  if (l.parcela) add('Parcela', `${l.parcela.atual}/${l.parcela.total}`)
+  if (l.fixa) add('Fixa', 'Sim, repete todo mês')
+  if (l.divisao && l.divisao.length > 1) {
+    add('Responsáveis', l.divisao.map(d => `${nomePessoa(d.pessoa_id)}: R$ ${fmtBR(d.valor)}`).join('<br>'))
+  } else {
+    add('Responsável', nomePessoa(l.pessoa_id))
+  }
+  if (l.nota && l.nota !== l.descricao) add('Nota', esc(l.nota))
+  if (l.criado_em) add('Criado em', new Date(l.criado_em).toLocaleString('pt-BR'))
+  if (grupo.length > 1) add('Grupo', `${grupo.length} lançamentos (${fmtData(grupo[0].data)} a ${fmtData(grupo[grupo.length-1].data)})`)
+
+  document.getElementById('fin-det-body').innerHTML = `
+    <div style="text-align:center;padding-bottom:12px;border-bottom:1px solid var(--border)">
+      <div style="font-size:15px;font-weight:600;color:var(--text)">${esc(l.descricao)}</div>
+      <div style="font-size:22px;font-weight:700;color:${ehReceita ? '#27AE60' : '#C0392B'};margin-top:4px">${ehReceita ? '+' : '−'} R$ ${fmtBR(l.valor)}</div>
+    </div>
+    ${linhas.join('')}`
+  document.getElementById('modal-fin-det').style.display = 'flex'
+}
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return
+  const m = document.getElementById('modal-fin-det')
+  if (m && m.style.display !== 'none') m.style.display = 'none'
+})
 
 window.finMostrarResumo = function() {
   const lancs = finFiltrar(finDoMes())
